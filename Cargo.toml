@@ -1,0 +1,15 @@
+[package]
+name = "auth"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.41.1", features = ["full"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres"] }
+actix-web = "4.9.0"
+actix-session = "0.10.1"
+argon2 = "0.5.3"
+clap = "4.5.21"
+colored = "2.1.0"
+log = "0.4.22"
+simple_logger = "5.0.0"

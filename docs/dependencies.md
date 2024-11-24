@@ -1,0 +1,10 @@
+# List of dependencies
++ [tokio](https://crates.io/crates/tokio)
++ [sqlx](https://crates.io/crates/sqlx)
++ [actix-web](https://crates.io/crates/actix-web)
++ [actix-session](https://crates.io/crates/actix-session)
++ [argon2](https://crates.io/crates/argon2)
++ [clap](https://crates.io/crates/clap)
++ [colored](https://crates.io/crates/colored)
++ [log](https://crates.io/crates/log)
++ [simple_logger](https://crates.io/crates/simple_logger)
