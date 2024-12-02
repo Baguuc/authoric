@@ -11,87 +11,16 @@ pub struct Permission {
 }
 
 impl Permission {
-    /// ## Permission::retrieve
+    /// ## Permission::select
     /// 
-    /// Creates a RetrieveQuery instance
+    /// Selects all permissions in specified order or one permission with specified name
     /// 
-    pub fn retrieve() -> RetrieveQuery {
-        return RetrieveQuery::new();
-    }
-
-    /// ## Permission::retrieve
-    /// 
-    /// Creates a CreateQuery instance
-    /// 
-    pub fn create(name: String, description: String) -> CreateQuery {
-        return CreateQuery::new(name, description);
-    }
-
-    /// ## Permission::retrieve
-    /// 
-    /// Creates a RetrieveQuery instance
-    /// 
-    pub fn delete(name: String) -> DeleteQuery {
-        return DeleteQuery::new(name);
-    }
-
-    /// ## Permission::new
-    /// 
-    /// Creates a instance of Permission
-    /// 
-    fn new(name: String, description: String) -> Self {
-        return Self {
-            name,
-            description
-        }
-    }
-}
-
-pub struct RetrieveQuery {
-    limit: Option<usize>,
-    order_in: Option<Order>,
-    with_name: Option<String>
-}
-
-impl RetrieveQuery {
-    /// ## RetrieveQuery::with_limit
-    /// 
-    /// Sets the max limit to returned rows <br>
-    /// default: 10
-    /// 
-    pub fn with_limit(&mut self, limit: usize) -> &mut Self {
-        self.limit = Some(limit);
-
-        return self;
-    }
-
-    /// ## RetrieveQuery::in_order
-    /// 
-    /// Sets the order of the returned result <br>
-    /// default: ASC (ascending)
-    /// 
-    pub fn in_order(&mut self, order_in: Order) -> &mut Self {
-        self.order_in = Some(order_in);
-
-        return self;
-    }
-
-    /// ## RetrieveQuery::with_name
-    /// 
-    /// Sets the name to filter the permissions by <br>
-    /// default: None
-    /// 
-    pub fn with_name(&mut self, with_name: String) -> &mut Self {
-        self.with_name = Some(with_name);
-
-        return self;
-    }
-
-    /// ## RetrieveQuery::query
-    /// 
-    /// Queries the data matching provided criteria from the database
-    /// 
-    pub async fn query(&self, conn: &PgPool) -> Result<Vec<Permission>, Box<dyn Error>> {
+    pub async fn select(
+        conn: &PgPool,
+        limit: Option<usize>,
+        order_in: Option<Order>,
+        with_name: Option<String>
+    ) -> Result<Vec<Permission>, Box<dyn Error>> {
         let mut tx = match conn.begin().await {
             Ok(tx) => tx,
             Err(err) => return Err("Something went wrong.".into())
@@ -107,17 +36,17 @@ impl RetrieveQuery {
             {};
             ", 
             // add where clause if needed
-            match &self.with_name {
+            match &with_name {
                 Some(_) => "WHERE name = $1 ".to_string(),
                 None => "".to_string()
             }, 
             // add order clause if needed
-            match &self.order_in {
+            match &order_in {
                 Some(order_in) => format!("ORDER BY name {}", order_in.to_string()),
                 None => "ORDER BY NAME ASC".to_string()
             },
             // add order limit if needed
-            match &self.limit {
+            match &limit {
                 Some(limit) => format!("LIMIT {}", limit),
                 None => "".to_string()
             }
@@ -125,7 +54,7 @@ impl RetrieveQuery {
 
         let mut q = query_as(&sql);
 
-        if let Some(with_name) = &self.with_name {
+        if let Some(with_name) = &with_name {
             q = q.bind(with_name);
         }
 
@@ -137,41 +66,26 @@ impl RetrieveQuery {
         return Ok(result);
     }
 
-    /// ## RetrieveQuery::new
+    /// ## Permission::insert
     /// 
-    /// Creates a new instance of RetrieveQuery
-    /// 
-    fn new() -> Self {
-        return Self {
-            limit: Some(10),
-            order_in: Some(Order::Ascending),
-            with_name: None
-        };
-    }
-}
-
-pub struct CreateQuery {
-    name: String,
-    description: String
-}
-
-impl CreateQuery {
-    /// ## CreateQuery::query
-    /// 
-    /// Creates a permission with provided data <br>
+    /// Inserts a permission with provided data into the database <br>
     /// 
     /// Errors:
     /// + when a permission with provided name already exist
     /// + when the name is longer than 255 chars or description is longer than 3000 chars
     /// 
-    pub async fn query(&self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
+    pub async fn insert(
+        conn: &PgPool,
+        name: String,
+        description: String
+    ) -> Result<(), Box<dyn Error>> {
         let mut tx = match conn.begin().await {
             Ok(tx) => tx,
             Err(err) => return Err("Something went wrong.".into())
         };
 
         let sql = "INSERT INTO permissions (name, description) VALUES ($1, $2);".to_string();
-        let q = query(&sql).bind(&self.name).bind(&self.description);
+        let q = query(&sql).bind(&name).bind(&description);
 
         match q.execute(&mut *tx).await {
             Ok(_) => (),
@@ -183,56 +97,25 @@ impl CreateQuery {
         return Ok(());
     }
 
-    /// ## CreateQuery::new
+    /// ## Permission::delete
     /// 
-    /// Creates a new instance of CreateQuery
+    /// Deletes a permission with provided name from the database
     /// 
-    fn new(name: String, description: String) -> Self {
-        return Self {
-            name,
-            description
-        };
-    }
-}
-
-pub struct DeleteQuery {
-    name: String,
-}
-
-impl DeleteQuery {
-    /// ## CreateQuery::query
-    /// 
-    /// Creates a permission with provided data
-    /// 
-    /// Errors:
-    /// + Returns an error when a permission with provided name does not exist
-    /// 
-    pub async fn query(&self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
+    pub async fn delete(
+        conn: &PgPool,
+        name: String
+    ) -> Result<(), Box<dyn Error>> {
         let mut tx = match conn.begin().await {
             Ok(tx) => tx,
             Err(err) => return Err("Something went wrong.".into())
         };
 
         let sql = "DELETE FROM permissions WHERE name = $1;".to_string();
-        let q = query(&sql).bind(&self.name);
+        let q = query(&sql).bind(&name);
 
-        match q.execute(&mut *tx).await {
-            Ok(_) => (),
-            Err(_) => return Err("This permission does not exist.".into())
-        };
-
+        q.execute(&mut *tx).await;
         let _ = tx.commit().await;
 
         return Ok(());
-    }
-
-    /// ## DeleteQuery::new
-    /// 
-    /// Creates a new instance of DeleteQuery
-    /// 
-    pub fn new(name: String) -> Self {
-        return Self {
-            name
-        };
     }
 }
