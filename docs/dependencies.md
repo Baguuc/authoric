@@ -8,3 +8,5 @@
 + [colored](https://crates.io/crates/colored)
 + [log](https://crates.io/crates/log)
 + [simple_logger](https://crates.io/crates/simple_logger)
++ [serde](https://crates.io/crates/serde)
++ [serde_json](https://crates.io/crates/serde_json)

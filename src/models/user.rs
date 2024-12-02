@@ -126,4 +126,59 @@ impl User {
 
         return Ok(());
     }
+
+    /// ## User::has_permission
+    /// 
+    /// Check if a user has a specified permission
+    /// 
+    /// Errors:
+    /// + When the user do not have the provided permission
+    /// 
+    pub async fn has_permissions(
+        self: &Self,
+        conn: &PgPool,
+        permission_name: String
+    ) -> Result<(), Box<dyn Error>> {
+        let mut tx = match conn.begin().await {
+            Ok(tx) => tx,
+            Err(_) => return Err("Something went wrong.".into())
+        };
+
+        let sql = "
+            SELECT
+                gp.permission_name
+            FROM
+                users u
+            INNER JOIN
+                users_groups ug
+            ON
+                u.login = ug.user_login
+            INNER JOIN
+                groups_permissions gp
+            ON
+                ug.group_name = gp.group_name
+            WHERE
+                u.login = '$1
+            AND
+                gp.permission_name  = $2
+            LIMIT
+                1;
+        ";
+        let q = query(sql)
+            .bind(&self.login)
+            .bind(&permission_name);
+        let num_rows = q
+            .execute(&mut *tx)
+            .await
+            .unwrap()
+            .rows_affected();
+
+        if num_rows < 1 {
+            return Err("This user do not have this permission".into());
+        }
+
+        let _ = tx.commit().await;
+
+        return Ok(());
+    }
 }

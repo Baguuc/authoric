@@ -15,8 +15,8 @@ CREATE TABLE groups_permissions (
 
 CREATE TABLE users (
     login VARCHAR(255) PRIMARY KEY,
-    -- Argon2 produces 32-byte long hashes
-    password_hash VARCHAR(32),
+    -- Argon2 hashes are about 100 chars long
+    password_hash VARCHAR(100),
     details JSON
 );
 
