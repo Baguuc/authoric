@@ -3,7 +3,7 @@ use std::error::Error;
 use serde_json::Value;
 use sqlx::{prelude::FromRow, query, query_as, PgPool};
 
-use super::{group::Group, permission::Permission, user::{User, UserCredentials}};
+use super::{group::Group, login_session::{LoginSession, LoginSessionStatus, LoginSessionUpdateData}, permission::Permission, user::{User, UserCredentials}};
 
 #[derive(FromRow)]
 pub struct EventRaw {
@@ -221,12 +221,15 @@ impl Event {
     }
 
     async fn handle_login_user_event(self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
-        let user_credentials = serde_json::from_value::<UserCredentials>(self.data).unwrap();
+        let session_id = serde_json::from_value::<i64>(self.data).unwrap();
 
-        match User::login(conn, user_credentials.login, user_credentials.password).await {
-            Ok(()) => (),
-            Err(err) => return Err(err.to_string().into())
-        };
+        let _ = LoginSession::update(
+            conn,
+            &session_id,
+            LoginSessionUpdateData {
+                status: LoginSessionStatus::Commited
+            }
+        );
 
         return Ok(());
     }
