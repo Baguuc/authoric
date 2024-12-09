@@ -28,10 +28,8 @@ CREATE TABLE users_groups (
 CREATE TABLE event (
     id INTEGER PRIMARY KEY,
     -- Types of event:
-    -- PermissionGet
     -- PermissionCreate
     -- PermissionDelete
-    -- GroupGet
     -- GroupCreate
     -- GroupDelete
     -- UserRegister
@@ -39,7 +37,7 @@ CREATE TABLE event (
     -- UserDelete
     -- the longest here is "PermissionCreate" and "PermissionDelete"
     -- and there are 16 chars long so we allocate 16 bytes for them
-    type VARCHAR(16),
+    _type VARCHAR(16),
     -- Statues:
     -- Commited
     -- OnHold

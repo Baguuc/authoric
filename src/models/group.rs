@@ -1,17 +1,18 @@
 #![allow(unused)]
 
 use std::error::Error;
+use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, query, query_as, PgPool};
 use crate::models::Order;
 
 use super::permission::Permission;
 
 
-#[derive(FromRow)]
+#[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Group {
-    name: String,
-    description: String,
-    permissions: Vec<String>
+    pub name: String,
+    pub description: String,
+    pub permissions: Vec<String>
 }
 
 impl Group {

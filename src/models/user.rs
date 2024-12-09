@@ -1,14 +1,21 @@
 use std::{error::Error, io::Read};
 
 use argon2::{password_hash::{self, rand_core::OsRng, SaltString}, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::{prelude::FromRow, query, query_as, PgPool};
 
-#[derive(FromRow)]
+#[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct User {
-    login: String,
-    password_hash: String,
-    details: Value
+    pub login: String,
+    pub password_hash: String,
+    pub details: Value
+}
+
+#[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct UserCredentials {
+    pub login: String,
+    pub password: String,
 }
 
 impl User {
@@ -180,5 +187,13 @@ impl User {
         let _ = tx.commit().await;
 
         return Ok(());
+    }
+
+    pub async fn login(
+        conn: &PgPool,
+        login: String,
+        password: String
+    ) -> Result<(), Box<dyn Error>> {
+        todo!()
     }
 }
