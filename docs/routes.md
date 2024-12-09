@@ -1,6 +1,6 @@
 # Routes
 Here all the routes of the API are listed.
-
+Flowcharts for more complicated routes are avaible in the docs/flowchart directory.
 
 ## Permissions
 
