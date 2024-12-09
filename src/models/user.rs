@@ -196,7 +196,7 @@ impl User {
         login: String,
         password: String,
         session_status: LoginSessionStatus
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<i64, Box<dyn Error>> {
         let user = match Self::select(conn, &login).await {
             Ok(user) => user,
             Err(_) => return Err("This user do not exist.".into())
@@ -212,8 +212,10 @@ impl User {
             conn,
             login,
             session_status
-        );
+        )
+        .await
+        .unwrap();
 
-        return Ok(());
+        return Ok(session_id);
     }
 }
