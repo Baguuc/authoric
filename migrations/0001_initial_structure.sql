@@ -38,10 +38,15 @@ CREATE TABLE event (
     -- the longest here is "PermissionCreate" and "PermissionDelete"
     -- and there are 16 chars long so we allocate 16 bytes for them
     _type VARCHAR(16),
+    data JSON
+);
+
+CREATE TABLE login_sessions (
+    id SERIAL PRIMARY KEY,
+    user_login VARCHAR(255) REFERENCES users(login),
     -- Statues:
     -- Commited
     -- OnHold
     -- the longest is 8 chars long
-    status VARCHAR(8),
-    data JSON
+    status VARCHAR(8)
 );

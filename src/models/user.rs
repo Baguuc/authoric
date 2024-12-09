@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::{prelude::FromRow, query, query_as, PgPool};
 
+use super::login_session::{LoginSession, LoginSessionStatus};
+
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct User {
     pub login: String,
@@ -23,9 +25,9 @@ impl User {
     /// 
     /// Selects a user from the database
     /// 
-    pub async fn query(
+    pub async fn select(
         conn: &PgPool,
-        login: String
+        login: &String
     ) -> Result<User, Box<dyn Error>> {
         let mut tx = match conn.begin().await {
             Ok(tx) => tx,
@@ -192,8 +194,26 @@ impl User {
     pub async fn login(
         conn: &PgPool,
         login: String,
-        password: String
+        password: String,
+        session_status: LoginSessionStatus
     ) -> Result<(), Box<dyn Error>> {
-        todo!()
+        let user = match Self::select(conn, &login).await {
+            Ok(user) => user,
+            Err(_) => return Err("This user do not exist.".into())
+        };
+
+        let password_hash = &PasswordHash::parse(user.password_hash.as_str(), password_hash::Encoding::B64).unwrap();
+        match Argon2::default().verify_password(password.as_bytes(), password_hash) {
+            Ok(_) => (),
+            Err(_) => return Err("Passwords do not match.".into())
+        };
+
+        let session_id = LoginSession::insert(
+            conn,
+            login,
+            session_status
+        );
+
+        return Ok(());
     }
 }

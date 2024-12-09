@@ -1,6 +1,7 @@
 pub mod permission;
 pub mod group;
 pub mod user;
+pub mod login_session;
 pub mod event;
 
 
