@@ -64,7 +64,7 @@ impl AdminCreateCommand {
         let name = input(format!("{} Enter the name of the permission: ", "+".green())).unwrap();
         let description = input(format!("{} Enter the description of the permission: ", "+".green())).unwrap();
 
-        match Permission::insert(&config.db_conn, name, description).await {
+        match Permission::insert(&config.db_conn, &name, &description).await {
             Ok(_) => (),
             Err(_) => println!("{}", "This permission already exist".red())
         };
@@ -77,10 +77,10 @@ impl AdminCreateCommand {
 
         let mut permissions: Vec<String> = vec![];
 
-        while let Ok(line) = input(format!("  {} Enter the name of the permission: ", "+".green())) {
-            match Permission::select(&config.db_conn, Some(1), None, Some(line.clone())).await {
+        while let Ok(permission_name) = input(format!("  {} Enter the name of the permission: ", "+".green())) {
+            match Permission::retrieve(&config.db_conn, &permission_name).await {
                 Ok(_) => {
-                    permissions.push(line);
+                    permissions.push(permission_name);
                 },
                 Err(_) => {
                     println!("{}", "  This permission do not exist".red())

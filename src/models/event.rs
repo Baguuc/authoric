@@ -3,7 +3,7 @@ use std::error::Error;
 use serde_json::Value;
 use sqlx::{prelude::FromRow, query, query_as, PgPool};
 
-use super::{group::Group, login_session::{LoginSession, LoginSessionStatus, LoginSessionUpdateData}, permission::Permission, user::{User, UserCredentials}};
+use super::{group::Group, login_session::{LoginSession, LoginSessionStatus, LoginSessionUpdateData}, permission::{Permission, PermissionInsertError}, user::{User, UserCredentials}};
 
 #[derive(FromRow)]
 pub struct EventRaw {
@@ -168,9 +168,9 @@ impl Event {
     async fn handle_create_permission_event(self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
         let permission = serde_json::from_value::<Permission>(self.data).unwrap();
         
-        match Permission::insert(conn, permission.name, permission.description).await {
+        match Permission::insert(conn, &permission.name, &permission.description).await {
             Ok(_) => (),
-            Err(err) => return Err(err.into()) 
+            Err(err) => return Err(err.to_string().into())
         };
 
         return Ok(());
@@ -179,9 +179,9 @@ impl Event {
     async fn handle_delete_permission_event(self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
         let permission_name = serde_json::from_value::<String>(self.data).unwrap();
         
-        match Permission::delete(conn, permission_name).await {
+        match Permission::delete(conn, &permission_name).await {
             Ok(_) => (),
-            Err(err) => return Err(err.into()) 
+            Err(err) => return Err(err.to_string().into())
         };
 
         return Ok(());

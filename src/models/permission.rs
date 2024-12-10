@@ -11,60 +11,98 @@ pub struct Permission {
     pub description: String,
 }
 
-impl Permission {
-    /// ## Permission::select
-    /// 
-    /// Selects all permissions in specified order or one permission with specified name
-    /// 
-    pub async fn select(
-        conn: &PgPool,
-        limit: Option<usize>,
-        order_in: Option<Order>,
-        with_name: Option<String>
-    ) -> Result<Vec<Permission>, Box<dyn Error>> {
-        let mut tx = match conn.begin().await {
-            Ok(tx) => tx,
-            Err(err) => return Err("Something went wrong.".into())
+pub enum PermissionListError {}
+
+impl ToString for PermissionListError {
+    fn to_string(&self) -> String {
+        return "".to_string();
+    }
+}
+
+pub enum PermissionRetrieveError {
+    /// Returned when a permission with specified name is not found
+    NotFound,
+}
+
+impl ToString for PermissionRetrieveError {
+    fn to_string(&self) -> String {
+        return match self {
+            Self::NotFound => "Permission with this name cannot be found".to_string()
         };
+    }
+}
+
+pub enum PermissionInsertError {
+    /// Returned when the permission either has too long name or description
+    /// or when a permission with provided name already exist
+    NameError
+}
+
+impl ToString for PermissionInsertError {
+    fn to_string(&self) -> String {
+        return match self {
+            Self::NameError => "Either permission name or description is too long or permission with this name already exist.".to_string()
+        }
+    }
+}
+
+pub enum PermissionDeleteError {}
+
+impl ToString for PermissionDeleteError {
+    fn to_string(&self) -> String {
+        return "".to_string();
+    }
+}
+
+impl Permission {
+    /// ## Permission::list
+    /// 
+    /// Lists number of permissions in specified order with specified offset from the database
+    /// 
+    pub async fn list(
+        conn: &PgPool,
+        order: Option<Order>,
+        offset: Option<usize>,
+        limit: Option<usize>
+    ) -> Result<Vec<Self>, PermissionListError> {
+        let order = order.unwrap_or(Order::Ascending);
+        let offset = offset.unwrap_or(0);
+        let limit = limit.unwrap_or(10);
 
         let sql = format!(
-            "SELECT 
-                *
-            FROM 
-                permissions 
-            {} 
-            {} 
-            {};
-            ", 
-            // add where clause if needed
-            match &with_name {
-                Some(_) => "WHERE name = $1 ".to_string(),
-                None => "".to_string()
-            }, 
-            // add order clause if needed
-            match &order_in {
-                Some(order_in) => format!("ORDER BY name {}", order_in.to_string()),
-                None => "ORDER BY NAME ASC".to_string()
-            },
-            // add order limit if needed
-            match &limit {
-                Some(limit) => format!("LIMIT {}", limit),
-                None => "".to_string()
-            }
+            "SELECT * FROM permissions ORDER BY {} OFFSET {} ROWS LIMIT {};",
+            order.to_string(),
+            offset,
+            limit
         );
-
-        let mut q = query_as(&sql);
-
-        if let Some(with_name) = &with_name {
-            q = q.bind(with_name);
-        }
-
-        // this will never be an error even if the table is empty so unwrap is ok
-        let result = q.fetch_all(&mut *tx).await.unwrap();
-
-        let _ = tx.commit().await;
+        let result = query_as(&sql)
+            .fetch_all(conn)
+            .await
+            .unwrap();
 
         return Ok(result);
+    }
+
+    /// ## Permission::retrieve
+    /// 
+    /// Retrieves a permission with specified name from the database
+    /// 
+    /// Errors:
+    /// + when permission with specified name do not exist
+    /// 
+    pub async fn retrieve(
+        conn: &PgPool,
+        name: &String
+    ) -> Result<Self, PermissionRetrieveError> {
+        let sql = "SELECT * FROM permissions WHERE name = $1;";
+        let result = query_as(&sql)
+            .fetch_one(conn)
+            .await;
+
+        match result {
+            Ok(result) => return Ok(result),
+            Err(_) => return Err(PermissionRetrieveError::NotFound)
+        };
     }
 
     /// ## Permission::insert
@@ -77,25 +115,16 @@ impl Permission {
     /// 
     pub async fn insert(
         conn: &PgPool,
-        name: String,
-        description: String
-    ) -> Result<(), Box<dyn Error>> {
-        let mut tx = match conn.begin().await {
-            Ok(tx) => tx,
-            Err(err) => return Err("Something went wrong.".into())
-        };
-
+        name: &String,
+        description: &String
+    ) -> Result<(), PermissionInsertError> {
         let sql = "INSERT INTO permissions (name, description) VALUES ($1, $2);".to_string();
         let q = query(&sql).bind(&name).bind(&description);
 
-        match q.execute(&mut *tx).await {
-            Ok(_) => (),
-            Err(_) => return Err("Permission with this name already exist.".into())
+        match q.execute(conn).await {
+            Ok(_) => return Ok(()),
+            Err(_) => return Err(PermissionInsertError::NameError)
         };
-
-        let _ = tx.commit().await;
-
-        return Ok(());
     }
 
     /// ## Permission::delete
@@ -104,19 +133,14 @@ impl Permission {
     /// 
     pub async fn delete(
         conn: &PgPool,
-        name: String
-    ) -> Result<(), Box<dyn Error>> {
-        let mut tx = match conn.begin().await {
-            Ok(tx) => tx,
-            Err(err) => return Err("Something went wrong.".into())
-        };
-
-        let sql = "DELETE FROM permissions WHERE name = $1;".to_string();
-        let q = query(&sql).bind(&name);
-
-        q.execute(&mut *tx).await;
-        let _ = tx.commit().await;
-
+        name: &String
+    ) -> Result<(), PermissionDeleteError> {
+        let sql = "DELETE FROM permissions WHERE name = $1;";
+        let q = query(&sql)
+            .bind(&name)
+            .execute(conn)
+            .await;
+        
         return Ok(());
     }
 }
