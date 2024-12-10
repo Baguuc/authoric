@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, io, path::Path};
+use std::{fs::{self, File}, io::{self, Write}, path::Path};
 use serde::{Deserialize, Serialize};
 use simple_home_dir::home_dir;
 use sqlx::PgPool;
@@ -43,6 +43,21 @@ impl CauthConfig {
         };
         
         return Ok(config);
+    }
+
+    pub fn save(new_data: CauthConfigRaw) -> Result<(), CauthConfigError> {
+        let mut config_file = Self::get_config_file()?;
+        let serialized = match serde_yml::to_string(&new_data) {
+            Ok(serialized) => serialized,
+            Err(_) => return Err(CauthConfigError::ParseError)
+        };
+
+        match config_file.write(serialized.as_bytes()) {
+            Ok(_) => (),
+            Err(_) => return Err(CauthConfigError::FileError)
+        };
+
+        return Ok(());
     }
 
     fn get_config_file() -> Result<File, CauthConfigError> {
