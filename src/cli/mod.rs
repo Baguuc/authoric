@@ -4,12 +4,9 @@ use clap::{
     Parser,
     Subcommand
 };
-use crate::cli::subcommands::{
-    admin::AdminCommand,
-    config::ConfigCommand,
-    run::RunCommand,
-    daemon::DaemonCommand
-};
+use crate::{cli::subcommands::{
+    admin::AdminCommand, config::ConfigCommand, daemon::DaemonCommand, run::RunCommand
+}, config::CauthConfig};
 
 
 
@@ -21,12 +18,12 @@ pub struct CauthCli {
 }
 
 impl CauthCli {
-    pub fn run(self) {
+    pub fn run(self, config: CauthConfig) {
         let _ = match self.action {
-            ActionType::Run(cmd) => cmd.run(),
-            ActionType::Daemon(cmd) => cmd.run(),
-            ActionType::Config(cmd) => cmd.run(),
-            ActionType::Admin(cmd) => cmd.run()
+            ActionType::Run(cmd) => cmd.run(config),
+            ActionType::Daemon(cmd) => cmd.run(config),
+            ActionType::Config(cmd) => cmd.run(config),
+            ActionType::Admin(cmd) => cmd.run(config)
         };
     }
 }

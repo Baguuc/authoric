@@ -10,3 +10,5 @@
 + [simple_logger](https://crates.io/crates/simple_logger)
 + [serde](https://crates.io/crates/serde)
 + [serde_json](https://crates.io/crates/serde_json)
++ [serde-yml](https://crates.io/crates/serde-yml)
++ [simple-home-dir](https://crates.io/crates/simple-home-dir)

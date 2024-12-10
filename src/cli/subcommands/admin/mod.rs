@@ -1,9 +1,12 @@
-use std::{error::Error, str::FromStr};
+use std::{error::Error, io::{self, read_to_string}, str::FromStr};
 
 use clap::{
     Args,
     Subcommand
 };
+use colored::Colorize;
+
+use crate::{config::CauthConfig, models::{group::Group, permission::Permission}, util::io::input};
 
 
 #[derive(Debug, Args)]
@@ -21,8 +24,13 @@ pub enum AdminAction {
 }
 
 impl AdminCommand {
-    pub fn run(self) {
-        todo!()
+    pub fn run(self, config: CauthConfig) {
+        let _ = match self.action {
+            AdminAction::Create(cmd) => cmd.run(config),
+            AdminAction::Inspect(cmd) => cmd.run(config),
+            AdminAction::Grant(cmd) => cmd.run(config),
+            AdminAction::Revoke(cmd) => cmd.run(config)
+        };
     }
 }
 
@@ -40,6 +48,54 @@ pub enum AdminCreateEntityType {
     Group
 }
 
+impl AdminCreateCommand {
+    pub fn run(self, config: CauthConfig) {
+        match self.entity_type {
+            AdminCreateEntityType::Permission => {
+                let _ = Self::create_permission(config);
+            },
+            AdminCreateEntityType::Group => {
+                let _ = Self::create_group(config);
+            }
+        }
+    }
+
+    async fn create_permission(config: CauthConfig) {
+        let name = input(format!("{} Enter the name of the permission: ", "+".green())).unwrap();
+        let description = input(format!("{} Enter the description of the permission: ", "+".green())).unwrap();
+
+        match Permission::insert(&config.db_conn, name, description).await {
+            Ok(_) => (),
+            Err(_) => println!("{}", "This permission already exist".red())
+        };
+    }
+
+    async fn create_group(config: CauthConfig) {
+        let name = input(format!("{} Enter the name of the group: ", "+".green())).unwrap();
+        let description = input(format!("{} Enter the description of the group: ", "+".green())).unwrap();
+        println!("{} Enter the permission names of the group (empty to stop): ", "+".green());
+
+        let mut permissions: Vec<String> = vec![];
+
+        while let Ok(line) = input(format!("  {} Enter the name of the permission: ", "+".green())) {
+            match Permission::select(&config.db_conn, Some(1), None, Some(line.clone())).await {
+                Ok(_) => {
+                    permissions.push(line);
+                },
+                Err(_) => {
+                    println!("{}", "  This permission do not exist".red())
+                }
+            }
+        }
+
+        match Group::insert(&config.db_conn, name, description, permissions).await {
+            Ok(_) => (),
+            Err(_) => println!("{}", "This group already exist".red())
+        };
+    }
+}
+
+
 
 #[derive(Debug, Args)]
 pub struct AdminInspectCommand {
@@ -55,8 +111,6 @@ pub enum AdminInspectEntityType {
     Event(AdminInspectIntegerIDCommand)
 }
 
-
-
 #[derive(Debug, Args)]
 pub struct AdminInspectStringIDCommand {
     pub id: String
@@ -65,6 +119,12 @@ pub struct AdminInspectStringIDCommand {
 #[derive(Debug, Args)]
 pub struct AdminInspectIntegerIDCommand {
     pub id: i64
+}
+
+impl AdminInspectCommand {
+    pub fn run(self, config: CauthConfig) {
+        
+    }
 }
 
 
@@ -89,6 +149,12 @@ pub struct AdminGrantCommandData {
     value: String
 }
 
+impl AdminGrantCommand {
+    pub fn run(self, config: CauthConfig) {
+        
+    }
+}
+
 
 
 #[derive(Debug, Args)]
@@ -111,4 +177,10 @@ pub enum AdminRevokeCommandEntityType {
 pub struct AdminRevokeCommandData {
     to: String,
     value: String
+}
+
+impl AdminRevokeCommand {
+    pub fn run(self, config: CauthConfig) {
+        
+    }
 }

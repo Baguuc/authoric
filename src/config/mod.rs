@@ -9,7 +9,7 @@ pub struct CauthConfigRaw {
 }
 
 pub struct CauthConfig {
-    db_conn: PgPool,
+    pub db_conn: PgPool,
 }
 
 enum CauthConfigError {

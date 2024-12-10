@@ -3,6 +3,8 @@ use clap::{
     Subcommand
 };
 
+use crate::config::CauthConfig;
+
 
 #[derive(Debug, Args)]
 pub struct ConfigCommand {
@@ -16,7 +18,7 @@ pub enum ConfigAction {
 }
 
 impl ConfigCommand {
-    pub fn run(self) {
+    pub fn run(self, config: CauthConfig) {
         todo!()
     }
 }
