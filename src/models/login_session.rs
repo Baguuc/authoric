@@ -1,4 +1,4 @@
-use std::{error::Error, os::linux::raw::stat};
+use std::error::Error;
 
 use serde::{Deserialize, Serialize};
 use sqlx::{query, query_as, FromRow, PgPool};
