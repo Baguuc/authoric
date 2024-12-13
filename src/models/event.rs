@@ -3,7 +3,7 @@ use std::error::Error;
 use serde_json::Value;
 use sqlx::{prelude::FromRow, query, query_as, PgPool};
 
-use super::{group::Group, login_session::{LoginSession, LoginSessionStatus, LoginSessionUpdateData}, permission::{Permission, PermissionInsertError}, user::{User, UserCredentials}};
+use super::{group::Group, login_session::{LoginSession, LoginSessionStatus, LoginSessionUpdateData}, permission::{Permission, PermissionInsertError}, user::{User, UserCredentials}, Order};
 
 #[derive(FromRow)]
 pub struct EventRaw {
@@ -61,12 +61,74 @@ pub struct Event {
     data: Value
 }
 
+pub type EventListError = ();
+
+#[derive(Debug)]
+pub enum EventRetrieveError {
+    /// Returned when a event with specified id is not found
+    NotFound
+}
+
+impl ToString for EventRetrieveError {
+    fn to_string(&self) -> String {
+        return match self {
+            Self::NotFound => "This event cannot be found".to_string()
+        }
+    }
+}
+
+pub type EventInsertError = ();
+
+pub type EventDeleteError = ();
+
 impl Event {
+    /// ## Event::list
+    /// 
+    /// Lists number of events in specified order with specified offset from the database
+    /// 
+    pub async fn list(
+        conn: &PgPool,
+        order: Option<Order>,
+        offset: Option<usize>,
+        limit: Option<usize>
+    ) -> Result<Vec<Self>, EventListError> {
+        let order = order.unwrap_or(Order::Ascending);
+        let offset = offset.unwrap_or(0);
+        let limit = limit.unwrap_or(10);
+        
+        let sql = format!(
+            "SELECT * FROM events ORDER BY {} OFFSET {} ROWS LIMIT {};",
+            order.to_string(),
+            offset,
+            limit
+        );
+        let result: Vec<EventRaw> = query_as(&sql)
+            .fetch_all(conn)
+            .await
+            .unwrap();
+
+        let events = result
+            .iter()
+            .map(|row| {
+                return Event {
+                    id: row.id,
+                    _type: EventType::from(row._type.clone()),
+                    data: row.data.clone()
+                };
+            })
+            .collect::<Vec<Event>>();
+
+        return Ok(events);
+    }
+
     /// ## Event::select
     /// 
-    /// Selects a event with specified id
+    /// Retrieves a event with specified id from the database
     /// 
-    pub async fn select(conn: &PgPool, with_id: i64) -> Result<Self, Box<dyn Error>> {
+    /// Errors:
+    /// + When a event with specified id do not exist
+    /// 
+    pub async fn retrieve(conn: &PgPool, with_id: i64) -> Result<Self, EventRetrieveError> {
         let sql = "SELECT * FROM events WHERE id = $1;";
         let result = query_as(sql)
             .bind(&with_id)
@@ -75,7 +137,7 @@ impl Event {
 
         let event_raw: EventRaw = match result {
             Ok(event) => event,
-            Err(_) => return Err("This event do not exist.".into())
+            Err(_) => return Err(EventRetrieveError::NotFound)
         };
 
         let event = Event {
@@ -91,7 +153,7 @@ impl Event {
     /// 
     /// Inserts a event with provided data into the database <br>
     /// 
-    pub async fn insert(conn: &PgPool, _type: EventType, data: Value) -> Result<Self, Box<dyn Error>> {
+    pub async fn insert(conn: &PgPool, _type: EventType, data: Value) -> Result<Self, EventInsertError> {
         let sql = "INSERT INTO events (_type, status, data) VALUES ($1, $2, $3) RETURNING id;";
         let result = query_as(sql)
             .bind(_type.to_string())
@@ -101,11 +163,25 @@ impl Event {
 
         let returned_id: (i64,) = result.unwrap();
         let returned_id = returned_id.0;
-        let event = Self::select(&conn, returned_id)
+        let event = Self::retrieve(&conn, returned_id)
             .await
             .unwrap();
         
         return Ok(event);
+    }
+
+    /// ## Event::delete
+    /// 
+    /// Cancels the event, deleting it from the database <br>
+    /// 
+    pub async fn delete(self, conn: &PgPool) -> Result<(), EventDeleteError> {
+        let sql = "DELETE FROM events WHERE id = $1";
+        let _ = query(sql)
+            .bind(&self.id)
+            .execute(conn)
+            .await;
+
+        return Ok(());
     }
 
     /// ## Event::commit
@@ -141,26 +217,7 @@ impl Event {
             Ok(_) => (),
             Err(err) => return Err(err.to_string().into())
         };
-        let _ = &self.cancel(conn);
-
-        return Ok(());
-    }
-
-    /// ## Event::cancel
-    /// 
-    /// Cancels the event, deleting it from the database <br>
-    /// 
-    pub async fn cancel(self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
-        let sql = "DELETE FROM events WHERE id = $1";
-        let result = query(sql)
-            .bind(&self.id)
-            .execute(conn)
-            .await;
-
-        match result {
-            Ok(_) => (),
-            Err(_) => return Err("Cannot delete.".into())
-        };
+        let _ = &self.delete(conn);
 
         return Ok(());
     }
