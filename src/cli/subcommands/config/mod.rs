@@ -18,7 +18,11 @@ pub enum ConfigAction {
 }
 
 impl ConfigCommand {
-    pub fn run(self, config: CauthConfig) {
-        todo!()
+    pub fn run(self) {
+        match self.action {
+            ConfigAction::Edit => {
+                CauthConfig::edit();
+            }
+        };
     }
 }

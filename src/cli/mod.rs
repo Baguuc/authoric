@@ -18,12 +18,26 @@ pub struct CauthCli {
 }
 
 impl CauthCli {
-    pub fn run(self, config: CauthConfig) {
+    pub fn run(self) {
         let _ = match self.action {
-            ActionType::Run(cmd) => cmd.run(config),
-            ActionType::Daemon(cmd) => cmd.run(config),
-            ActionType::Config(cmd) => cmd.run(config),
-            ActionType::Admin(cmd) => cmd.run(config)
+            ActionType::Run(cmd) => {
+                let config = CauthConfig::parse_or_edit();
+
+                cmd.run(config);
+            },
+            ActionType::Daemon(cmd) =>{
+                let config = CauthConfig::parse_or_edit();
+
+                cmd.run(config);
+            },
+            ActionType::Admin(cmd) => {
+                let config = CauthConfig::parse_or_edit();
+
+                cmd.run(config);
+            },
+            ActionType::Config(cmd) => {
+                cmd.run();
+            }
         };
     }
 }

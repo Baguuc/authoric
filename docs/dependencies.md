@@ -12,3 +12,4 @@
 + [serde_json](https://crates.io/crates/serde_json)
 + [serde-yml](https://crates.io/crates/serde-yml)
 + [simple-home-dir](https://crates.io/crates/simple-home-dir)
++ [open](https://crates.io/crates/open/5.3.1)
