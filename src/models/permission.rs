@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use std::error::Error;
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, query, query_as, PgPool};
 use crate::models::Order;
@@ -9,6 +10,18 @@ use crate::models::Order;
 pub struct Permission {
     pub name: String,
     pub description: String,
+}
+
+impl ToString for Permission {
+    fn to_string(&self) -> String {
+        return format!(
+            "{} Name: {}\n{} Description: {}",
+            "+".green(),
+            self.name.green(),
+            "+".green(),
+            self.description.green()
+        );
+    }
 }
 
 pub enum PermissionListError {}
@@ -96,6 +109,7 @@ impl Permission {
     ) -> Result<Self, PermissionRetrieveError> {
         let sql = "SELECT * FROM permissions WHERE name = $1;";
         let result = query_as(&sql)
+            .bind(&name)
             .fetch_one(conn)
             .await;
 
