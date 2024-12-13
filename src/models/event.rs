@@ -192,7 +192,7 @@ impl Event {
         
         match Group::insert(conn, group.name, group.description, group.permissions).await {
             Ok(_) => (),
-            Err(err) => return Err(err.into()) 
+            Err(err) => return Err(err.to_string().into()) 
         };
 
         return Ok(());
@@ -203,7 +203,7 @@ impl Event {
         
         match Group::delete(conn, group_name).await {
             Ok(_) => (),
-            Err(err) => return Err(err.into()) 
+            Err(err) => return Err(err.to_string().into()) 
         };
 
         return Ok(());
