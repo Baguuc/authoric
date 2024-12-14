@@ -5,8 +5,9 @@ use clap::{
     Subcommand
 };
 use colored::Colorize;
+use futures::executor::block_on;
 
-use crate::{config::CauthConfig, models::{group::Group, permission::Permission}, util::io::input};
+use crate::{config::CauthConfig, models::{event::Event, group::Group, permission::{Permission, PermissionRetrieveError}, user::User}, util::io::input};
 
 
 #[derive(Debug, Args)]
@@ -52,10 +53,10 @@ impl AdminCreateCommand {
     pub fn run(self, config: CauthConfig) {
         match self.entity_type {
             AdminCreateEntityType::Permission => {
-                let _ = Self::create_permission(config);
+                let _ = block_on(Self::create_permission(config));
             },
             AdminCreateEntityType::Group => {
-                let _ = Self::create_group(config);
+                let _ = block_on(Self::create_group(config));
             }
         }
     }
@@ -100,7 +101,7 @@ impl AdminCreateCommand {
 #[derive(Debug, Args)]
 pub struct AdminInspectCommand {
     #[clap(subcommand)]
-    pub action: AdminInspectEntityType
+    pub entity_type: AdminInspectEntityType
 }
 
 #[derive(Debug, Subcommand)]
@@ -123,7 +124,52 @@ pub struct AdminInspectIntegerIDCommand {
 
 impl AdminInspectCommand {
     pub fn run(self, config: CauthConfig) {
-        
+        match self.entity_type {
+            AdminInspectEntityType::Permission(id) => {
+                let permission = match block_on(Permission::retrieve(&config.db_conn, &id.id)) {
+                    Ok(permission) => permission,
+                    Err(_) => {
+                        println!("{}", format!("Permission \"{}\" not found.", id.id).red());
+                        return;
+                    }
+                };
+
+                println!("{}", permission.to_string());
+            },
+            AdminInspectEntityType::Group(id) => {
+                let group = match block_on(Group::retrieve(&config.db_conn, &id.id)) {
+                    Ok(group) => group,
+                    Err(_) => {
+                        println!("{}", format!("Group \"{}\" not found.", id.id).red());
+                        return;
+                    }
+                };
+
+                println!("{}", group.to_string());
+            },
+            AdminInspectEntityType::User(id) => {
+                let user = match block_on(User::retrieve(&config.db_conn, &id.id)) {
+                    Ok(user) => user,
+                    Err(_) => {
+                        println!("{}", format!("User \"{}\" not found.", id.id).red());
+                        return;
+                    }
+                };
+
+                println!("{}", user.to_string());
+            },
+            AdminInspectEntityType::Event(id) => {
+                let event = match block_on(Event::retrieve(&config.db_conn, id.id)) {
+                    Ok(event) => event,
+                    Err(_) => {
+                        println!("{}", format!("Event \"{}\" not found.", id.id).red());
+                        return;
+                    }
+                };
+
+                println!("{}", event.to_string());
+            }
+        };
     }
 }
 

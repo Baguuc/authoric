@@ -4,7 +4,7 @@ use std::error::Error;
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, query, query_as, PgPool};
-use crate::models::Order;
+use crate::{models::Order, util::string::json_value_to_pretty_string};
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Permission {
@@ -14,13 +14,9 @@ pub struct Permission {
 
 impl ToString for Permission {
     fn to_string(&self) -> String {
-        return format!(
-            "{} Name: {}\n{} Description: {}",
-            "+".green(),
-            self.name.green(),
-            "+".green(),
-            self.description.green()
-        );
+        let formatted = json_value_to_pretty_string(&serde_json::to_value(&self).unwrap());
+
+        return formatted;
     }
 }
 

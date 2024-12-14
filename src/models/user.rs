@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::{prelude::FromRow, query, query_as, PgPool};
 
+use crate::util::string::json_value_to_pretty_string;
+
 use super::{login_session::{LoginSession, LoginSessionStatus}, Order};
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]
@@ -12,6 +14,14 @@ pub struct User {
     pub login: String,
     pub password_hash: String,
     pub details: Value
+}
+
+impl ToString for User {
+    fn to_string(&self) -> String {
+        let formatted = json_value_to_pretty_string(&serde_json::to_value(&self).unwrap());
+
+        return formatted;
+    }
 }
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]

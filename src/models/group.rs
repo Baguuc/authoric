@@ -4,7 +4,7 @@ use std::error::Error;
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, query, query_as, PgPool};
-use crate::models::Order;
+use crate::{models::Order, util::string::json_value_to_pretty_string};
 
 use super::permission::Permission;
 
@@ -14,6 +14,14 @@ pub struct Group {
     pub name: String,
     pub description: String,
     pub permissions: Vec<String>
+}
+
+impl ToString for Group {
+    fn to_string(&self) -> String {
+        let formatted = json_value_to_pretty_string(&serde_json::to_value(&self).unwrap());
+
+        return formatted;
+    }
 }
 
 pub enum GroupListError {}

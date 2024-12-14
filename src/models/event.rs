@@ -1,15 +1,17 @@
 use std::error::Error;
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{prelude::FromRow, query, query_as, PgPool};
 
+use crate::util::string::json_value_to_pretty_string;
+
 use super::{group::Group, login_session::{LoginSession, LoginSessionStatus, LoginSessionUpdateData}, permission::{Permission, PermissionInsertError}, user::{User, UserCredentials}, Order};
 
-#[derive(FromRow)]
+#[derive(FromRow, Serialize, Deserialize)]
 pub struct EventRaw {
     id: i64,
     _type: String,
-    status: String,
     data: Value
 }
 
@@ -59,6 +61,19 @@ pub struct Event {
     id: i64,
     _type: EventType,
     data: Value
+}
+
+impl ToString for Event {
+    fn to_string(&self) -> String {
+        let raw = EventRaw {
+            id: self.id,
+            _type: self._type.to_string(),
+            data: self.data.clone()
+        };
+        let formatted = json_value_to_pretty_string(&serde_json::to_value(&raw).unwrap());
+
+        return formatted;
+    }
 }
 
 pub type EventListError = ();
