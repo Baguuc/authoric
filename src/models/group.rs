@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use std::error::Error;
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, query, query_as, PgPool};
 use crate::models::Order;
@@ -109,7 +110,22 @@ impl Group {
         conn: &PgPool,
         name: &String
     ) -> Result<Self, GroupRetrieveError> {
-        let sql = "SELECT * FROM groups WHERE name = $1;";
+        let sql = "
+        SELECT 
+            g.name,
+            g.description,
+            ARRAY_REMOVE(ARRAY_AGG(gp.permission_name), NULL) AS permissions
+        FROM 
+            groups g
+        INNER JOIN
+            groups_permissions gp
+        ON
+            gp.group_name = g.name
+        WHERE
+            name = $1
+        GROUP BY
+            g.name;
+        ";
         let result = query_as(&sql)
             .bind(&name)
             .fetch_one(conn)
