@@ -3,7 +3,7 @@
 use std::error::Error;
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, query, query_as, PgPool};
+use sqlx::{query, query_as, FromRow, PgPool};
 use crate::{models::Order, util::string::json_value_to_pretty_string};
 
 use super::permission::Permission;
@@ -74,6 +74,34 @@ impl ToString for GroupDeleteError {
     fn to_string(&self) -> String {
         return match self {
             Self::ServerError(original_err) => format!("Server error: {}", original_err)
+        };
+    }
+}
+
+pub enum GroupGrantError {
+    /// Returned either when a group with provided name do not exist
+    /// or provided permission do not exist
+    NameError
+}
+
+impl ToString for GroupGrantError {
+    fn to_string(&self) -> String {
+        return match self {
+            Self::NameError => "Provided group or permission do not exist".to_string()
+        };
+    }
+}
+
+pub enum GroupRevokeError {
+    /// Returned either when a group with provided name do not exist
+    /// or provided permission do not exist
+    NameError
+}
+
+impl ToString for GroupRevokeError {
+    fn to_string(&self) -> String {
+        return match self {
+            Self::NameError => "Provided group or permission do not exist".to_string()
         };
     }
 }
@@ -216,6 +244,68 @@ impl Group {
         };
 
         let _ = tx.commit().await;
+
+        return Ok(());
+    }
+
+    /// ## Group::has_permission
+    /// 
+    /// Checks if group has a specified permission
+    /// 
+    pub async fn has_permission(
+        conn: &PgPool,
+        name: &String,
+        permission_name: &String
+    ) -> Result<bool, GroupRetrieveError> {
+        let data = Self::retrieve(conn, &name).await?;
+
+        return Ok(data.permissions.contains(&permission_name));
+    }
+
+    /// ## Group::grant_permission
+    /// 
+    /// Grants group a permission with specified name
+    /// 
+    pub async fn grant_permission(
+        conn: &PgPool,
+        name: &String,
+        permission_name: &String
+    ) -> Result<(), GroupGrantError> {
+        let sql = "INSERT INTO groups_permissions (group_name, permission_name) VALUES ($1, $2);";
+        let result = query(sql)
+            .bind(name)
+            .bind(permission_name)
+            .execute(conn)
+            .await;
+
+        match result {
+            Ok(_) => (),
+            Err(_) => return Err(GroupGrantError::NameError)
+        };
+
+        return Ok(());
+    }
+
+    /// ## Group::revoke_permission
+    /// 
+    /// Revokes a permission from group with specified name
+    /// 
+    pub async fn revoke_permission(
+        conn: &PgPool,
+        name: &String,
+        permission_name: &String
+    ) -> Result<(), GroupRevokeError> {
+        let sql = "DELETE FROM groups_permissions WHERE group_name = $1 AND permission_name = $2;";
+        let result = query(sql)
+            .bind(name)
+            .bind(permission_name)
+            .execute(conn)
+            .await
+            .unwrap();
+
+        if result.rows_affected() == 0 {
+            return Err(GroupRevokeError::NameError);
+        }
 
         return Ok(());
     }

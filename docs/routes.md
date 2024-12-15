@@ -95,6 +95,24 @@ Query parameters:
 + session_id - Required, ID of login session retrieved from POST /user route
 + auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
+### POST /groups/{name}/{permission_name}
+Grants group a permission
+
+Errors:
+Fails when a mentioned group or permission do not exist.
+
+Requirements:
++ User have to have the "groups:update" permission
+
+### DELETE /groups/{name}/{permission_name}
+Revokes a permission from group
+
+Errors:
+Fails when a mentioned group do not exist or group do not have mentioned permission.
+
+Requirements:
++ User have to have the "groups:update" permission
+
 ## User
 
 ### POST /users
@@ -140,6 +158,24 @@ Logs out from the user's account, deleting the session
 
 Query parameters:
 + session_id - Required, ID of login session retrieved from POST /user route
+
+### POST /users/{name}/{group_name}
+Grants user a group
+
+Errors:
+Fails when a mentioned user or group do not exist.
+
+Requirements:
++ User have to have the "users:update" permission
+
+### DELETE /users/{name}/{group_name}
+Revokes a group from user
+
+Errors:
+Fails when a mentioned user do not exist or user do not have mentioned group.
+
+Requirements:
++ User have to have the "users:update" permission
 
 ## Event
 

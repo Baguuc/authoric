@@ -11,6 +11,8 @@ All of this includes:
 + **groups:get** - permission to retrieve the groups list from the database
 + **groups:post** - permission to post new group to the database
 + **groups:delete** - permission to delete a group from the database
++ **groups:update** - permission to grant/revoke permissions to groups
++ **users:update** - permission to grant/revoke groups to users
 
 ###### Groups
 + **root** - the most privileged group, having to permissions to do everything. Caution: do not grant this group to any untrusted user as it can result in damages done to your system. Instead, create their own group fitting their needs.
