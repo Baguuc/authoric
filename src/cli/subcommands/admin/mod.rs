@@ -8,7 +8,7 @@ use colored::Colorize;
 use futures::executor::block_on;
 use sqlx::PgConnection;
 
-use crate::{config::CauthConfig, models::{event::Event, group::Group, permission::{Permission, PermissionRetrieveError}, user::User}, util::io::input};
+use crate::{config::CauthConfig, models::{event::Event, group::{Group, GroupGrantError}, permission::{Permission, PermissionRetrieveError}, user::{User, UserGrantError}}, util::io::input};
 
 
 #[derive(Debug, Args)]
@@ -66,7 +66,7 @@ impl AdminCreateCommand {
         let name = input(format!("{} Enter the name of the permission: ", "+".green())).unwrap();
         let description = input(format!("{} Enter the description of the permission: ", "+".green())).unwrap();
 
-        let mut executor = block_on(config.db_conn.acquire()).unwrap();
+        let mut executor = config.db_conn.acquire().await.unwrap();
         match Permission::insert(&mut executor, &name, &description).await {
             Ok(_) => (),
             Err(_) => println!("{}", "This permission already exist".red())
@@ -74,7 +74,7 @@ impl AdminCreateCommand {
     }
 
     async fn create_group(config: CauthConfig) {
-        let mut executor = block_on(config.db_conn.acquire()).unwrap();
+        let mut executor = config.db_conn.acquire().await.unwrap();
 
         let name = input(format!("{} Enter the name of the group: ", "+".green())).unwrap();
         let description = input(format!("{} Enter the description of the group: ", "+".green())).unwrap();
@@ -187,8 +187,6 @@ impl AdminInspectCommand {
 pub struct AdminGrantCommand {
     #[clap(subcommand)]
     pub entity_type: AdminGrantCommandEntityType,
-    pub to: String,
-    pub value: String
 }
 
 #[derive(Debug, Subcommand)]
@@ -205,7 +203,50 @@ pub struct AdminGrantCommandData {
 
 impl AdminGrantCommand {
     pub fn run(self, config: CauthConfig) {
-        
+        match self.entity_type {
+            AdminGrantCommandEntityType::Group(data) => {
+                let _ = match block_on(Self::grant_group_permission(config, data)) {
+                    Ok(_) => println!(
+                        "{}",
+                        format!("Successfully granted permission {} to group {}.", data.value, data.to)
+                            .green()
+                    ),
+                    Err(err) => println!(
+                        "{}",
+                        format!("Error while granting permission {} to group {}.\n{}", data.value, data.to, err.to_string())
+                            .green()
+                    )
+                };
+            }
+            AdminGrantCommandEntityType::User(data) => {
+                let _ = match block_on(Self::grant_user_group(config, data)) {
+                    Ok(_) => println!(
+                        "{}",
+                        format!("Successfully granted group {} to user {}.", data.value, data.to)
+                            .green()
+                    ),
+                    Err(err) => println!(
+                        "{}",
+                        format!("Error while granting group {} to user {}.\n{}", data.value, data.to, err.to_string())
+                            .green()
+                    )
+                };
+            }
+        }
+    }
+
+    pub async fn grant_group_permission(config: CauthConfig, data: AdminGrantCommandData) -> Result<(), GroupGrantError> {
+        let mut executor = config.db_conn.acquire().await.unwrap();
+        Group::grant_permission(&mut executor, &data.to, &data.value).await?;
+
+        return Ok(());
+    }
+
+    pub async fn grant_user_group(config: CauthConfig, data: AdminGrantCommandData) -> Result<(), UserGrantError> {
+        let mut executor = config.db_conn.acquire().await.unwrap();
+        User::grant_group(&mut executor, &data.to, &data.value).await?;
+
+        return Ok(());
     }
 }
 
