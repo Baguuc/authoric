@@ -8,7 +8,7 @@ use colored::Colorize;
 use futures::executor::block_on;
 use sqlx::PgConnection;
 
-use crate::{config::CauthConfig, models::{event::Event, group::{Group, GroupGrantError}, permission::{Permission, PermissionRetrieveError}, user::{User, UserGrantError}}, util::io::input};
+use crate::{config::CauthConfig, models::{event::Event, group::{Group, GroupGrantError, GroupRevokeError}, permission::{Permission, PermissionRetrieveError}, user::{User, UserGrantError, UserRevokeError}}, util::io::input};
 
 
 #[derive(Debug, Args)]
@@ -205,7 +205,7 @@ impl AdminGrantCommand {
     pub fn run(self, config: CauthConfig) {
         match self.entity_type {
             AdminGrantCommandEntityType::Group(data) => {
-                let _ = match block_on(Self::grant_group_permission(config, data)) {
+                let _ = match block_on(Self::grant_group_permission(config, &data)) {
                     Ok(_) => println!(
                         "{}",
                         format!("Successfully granted permission {} to group {}.", data.value, data.to)
@@ -219,7 +219,7 @@ impl AdminGrantCommand {
                 };
             }
             AdminGrantCommandEntityType::User(data) => {
-                let _ = match block_on(Self::grant_user_group(config, data)) {
+                let _ = match block_on(Self::grant_user_group(config, &data)) {
                     Ok(_) => println!(
                         "{}",
                         format!("Successfully granted group {} to user {}.", data.value, data.to)
@@ -235,14 +235,14 @@ impl AdminGrantCommand {
         }
     }
 
-    pub async fn grant_group_permission(config: CauthConfig, data: AdminGrantCommandData) -> Result<(), GroupGrantError> {
+    pub async fn grant_group_permission(config: CauthConfig, data: &AdminGrantCommandData) -> Result<(), GroupGrantError> {
         let mut executor = config.db_conn.acquire().await.unwrap();
         Group::grant_permission(&mut executor, &data.to, &data.value).await?;
 
         return Ok(());
     }
 
-    pub async fn grant_user_group(config: CauthConfig, data: AdminGrantCommandData) -> Result<(), UserGrantError> {
+    pub async fn grant_user_group(config: CauthConfig, data: &AdminGrantCommandData) -> Result<(), UserGrantError> {
         let mut executor = config.db_conn.acquire().await.unwrap();
         User::grant_group(&mut executor, &data.to, &data.value).await?;
 
@@ -255,7 +255,7 @@ impl AdminGrantCommand {
 #[derive(Debug, Args)]
 pub struct AdminRevokeCommand {
     #[clap(subcommand)]
-    pub entity_type: AdminGrantCommandEntityType,
+    pub entity_type: AdminRevokeCommandEntityType,
     pub to: String,
     pub value: String
 }
@@ -263,8 +263,8 @@ pub struct AdminRevokeCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum AdminRevokeCommandEntityType {
-    Group(AdminGrantCommandData),
-    User(AdminGrantCommandData)
+    Group(AdminRevokeCommandData),
+    User(AdminRevokeCommandData)
 }
 
 
@@ -276,6 +276,49 @@ pub struct AdminRevokeCommandData {
 
 impl AdminRevokeCommand {
     pub fn run(self, config: CauthConfig) {
-        
+        match self.entity_type {
+            AdminRevokeCommandEntityType::Group(data) => {
+                let _ = match block_on(Self::revoke_group_permission(config, &data)) {
+                    Ok(_) => println!(
+                        "{}",
+                        format!("Successfully revoked permission {} from group {}.", data.value, data.to)
+                            .green()
+                    ),
+                    Err(err) => println!(
+                        "{}",
+                        format!("Error while revoking permission {} from group {}.\n{}", data.value, data.to, err.to_string())
+                            .green()
+                    )
+                };
+            }
+            AdminRevokeCommandEntityType::User(data) => {
+                let _ = match block_on(Self::revoke_user_group(config, &data)) {
+                    Ok(_) => println!(
+                        "{}",
+                        format!("Successfully revoked group {} from user {}.", data.value, data.to)
+                            .green()
+                    ),
+                    Err(err) => println!(
+                        "{}",
+                        format!("Error while revoking group {} from user {}.\n{}", data.value, data.to, err.to_string())
+                            .green()
+                    )
+                };
+            }
+        }
+    }
+
+    pub async fn revoke_group_permission(config: CauthConfig, data: &AdminRevokeCommandData) -> Result<(), GroupRevokeError> {
+        let mut executor = config.db_conn.acquire().await.unwrap();
+        Group::revoke_permission(&mut executor, &data.to, &data.value).await?;
+
+        return Ok(());
+    }
+
+    pub async fn revoke_user_group(config: CauthConfig, data: &AdminRevokeCommandData) -> Result<(), UserRevokeError> {
+        let mut executor = config.db_conn.acquire().await.unwrap();
+        User::revoke_group(&mut executor, &data.to, &data.value).await?;
+
+        return Ok(());
     }
 }
