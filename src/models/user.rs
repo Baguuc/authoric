@@ -92,7 +92,7 @@ pub enum UserGrantError {
     NameError
 }
 
-impl ToString for GroupGrantError {
+impl ToString for UserGrantError {
     fn to_string(&self) -> String {
         return match self {
             Self::NameError => "Provided user or group do not exist".to_string()
@@ -106,7 +106,7 @@ pub enum UserRevokeError {
     NameError
 }
 
-impl ToString for GroupRevokeError {
+impl ToString for UserRevokeError {
     fn to_string(&self) -> String {
         return match self {
             Self::NameError => "Provided user or group do not exist".to_string()
@@ -329,15 +329,15 @@ impl User {
     /// Errors:
     /// + When provided user or group do not exist
     /// 
-    pub async fn grant_permission(
+    pub async fn grant_group(
         conn: &mut PgConnection,
         login: &String,
         group_name: &String
     ) -> Result<(), UserGrantError> {
         let sql = "INSERT INTO users_groups (user_login, group_name) VALUES ($1, $2);";
         let result = query(sql)
-            .bind(name)
-            .bind(permission_name)
+            .bind(login)
+            .bind(group_name)
             .execute(&mut *conn)
             .await;
 
@@ -356,15 +356,15 @@ impl User {
     /// Errors:
     /// + When provided user or group do not exist
     /// 
-    pub async fn revoke_permission(
+    pub async fn revoke_group(
         conn: &mut PgConnection,
         login: &String,
         group_name: &String
     ) -> Result<(), UserRevokeError> {
         let sql = "DELETE FROM users_groups WHERE user_login = $1 AND group_name = $2;";
         let result = query(sql)
-            .bind(name)
-            .bind(permission_name)
+            .bind(login)
+            .bind(group_name)
             .execute(&mut *conn)
             .await
             .unwrap();
