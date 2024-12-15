@@ -1,7 +1,7 @@
 use std::{error::Error, str::FromStr};
 
 use serde::{Deserialize, Serialize};
-use sqlx::{query, query_as, FromRow, PgPool};
+use sqlx::{query, query_as, FromRow, PgConnection};
 
 use crate::util::string::json_value_to_pretty_string;
 
@@ -106,7 +106,7 @@ impl LoginSession {
     /// Selects a user's loggin session with specified id from the database
     /// 
     pub async fn retrieve(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         id: i64
     ) -> Result<Self, LoginSessionRetrieveError> {
         let sql = "
@@ -121,7 +121,7 @@ impl LoginSession {
         let q = query_as(&sql)
             .bind(&id);
 
-        let raw: LoginSessionRaw = match q.fetch_one(conn).await {
+        let raw: LoginSessionRaw = match q.fetch_one(&mut *conn).await {
             Ok(raw) => raw,
             Err(_) => return Err(LoginSessionRetrieveError::NotFound)
         };
@@ -143,7 +143,7 @@ impl LoginSession {
     /// + when referenced user do not exist.
     /// 
     pub async fn insert(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         user_login: String,
         status: LoginSessionStatus
     ) -> Result<i64, LoginSessionInsertError> {
@@ -159,7 +159,7 @@ impl LoginSession {
         let result = query_as(sql)
             .bind(&user_login)
             .bind(status.to_string())
-            .fetch_one(conn)
+            .fetch_one(&mut *conn)
             .await;
 
         let row: (i64,) = match result {
@@ -177,13 +177,13 @@ impl LoginSession {
     /// Deletes a user's login session from the database (e.g. logs out the user)
     /// 
     pub async fn delete(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         session_id: i64
     ) -> Result<(), LoginSessionDeleteError> {
         let sql = "DELETE FROM login_sessions WHERE id = $1";
         let result = query(sql)
             .bind(&session_id)
-            .execute(conn)
+            .execute(&mut *conn)
             .await;
 
         let rows_affected = result
@@ -202,7 +202,7 @@ impl LoginSession {
     /// Updates a login session with new status
     /// 
     pub async fn update(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         session_id: &i64,
         new_status: LoginSessionStatus
     ) -> Result<(), LoginSessionUpdateError> {
@@ -210,7 +210,7 @@ impl LoginSession {
         let result = query(sql)
             .bind(new_status.to_string())
             .bind(session_id)
-            .execute(conn)
+            .execute(&mut *conn)
             .await;
         
         return Ok(());

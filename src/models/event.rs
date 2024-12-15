@@ -2,7 +2,7 @@ use std::error::Error;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{prelude::FromRow, query, query_as, PgPool};
+use sqlx::{prelude::FromRow, query, query_as, PgConnection};
 
 use crate::util::string::json_value_to_pretty_string;
 
@@ -102,7 +102,7 @@ impl Event {
     /// Lists number of events in specified order with specified offset from the database
     /// 
     pub async fn list(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         order: Option<Order>,
         offset: Option<usize>,
         limit: Option<usize>
@@ -118,7 +118,7 @@ impl Event {
             limit
         );
         let result: Vec<EventRaw> = query_as(&sql)
-            .fetch_all(conn)
+            .fetch_all(&mut *conn)
             .await
             .unwrap();
 
@@ -143,11 +143,11 @@ impl Event {
     /// Errors:
     /// + When a event with specified id do not exist
     /// 
-    pub async fn retrieve(conn: &PgPool, with_id: i64) -> Result<Self, EventRetrieveError> {
+    pub async fn retrieve(conn: &mut PgConnection, with_id: i64) -> Result<Self, EventRetrieveError> {
         let sql = "SELECT * FROM events WHERE id = $1;";
         let result = query_as(sql)
             .bind(&with_id)
-            .fetch_one(conn)
+            .fetch_one(&mut *conn)
             .await;
 
         let event_raw: EventRaw = match result {
@@ -168,17 +168,17 @@ impl Event {
     /// 
     /// Inserts a event with provided data into the database <br>
     /// 
-    pub async fn insert(conn: &PgPool, _type: EventType, data: Value) -> Result<Self, EventInsertError> {
+    pub async fn insert(conn: &mut PgConnection, _type: EventType, data: Value) -> Result<Self, EventInsertError> {
         let sql = "INSERT INTO events (_type, status, data) VALUES ($1, $2, $3) RETURNING id;";
         let result = query_as(sql)
             .bind(_type.to_string())
             .bind(data)
-            .fetch_one(conn)
+            .fetch_one(&mut *conn)
             .await;
 
         let returned_id: (i64,) = result.unwrap();
         let returned_id = returned_id.0;
-        let event = Self::retrieve(&conn, returned_id)
+        let event = Self::retrieve(conn, returned_id)
             .await
             .unwrap();
         
@@ -189,11 +189,11 @@ impl Event {
     /// 
     /// Cancels the event, deleting it from the database <br>
     /// 
-    pub async fn delete(self, conn: &PgPool) -> Result<(), EventDeleteError> {
+    pub async fn delete(self, conn: &mut PgConnection) -> Result<(), EventDeleteError> {
         let sql = "DELETE FROM events WHERE id = $1";
         let _ = query(sql)
             .bind(&self.id)
-            .execute(conn)
+            .execute(&mut *conn)
             .await;
 
         return Ok(());
@@ -203,7 +203,7 @@ impl Event {
     /// 
     /// Commits a event, posting the changes it should make to the database <br>
     /// 
-    pub async fn commit(self: Self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
+    pub async fn commit(self: Self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
         let result = match &self._type {
             EventType::PermissionCreate => &self
                 .clone()
@@ -237,7 +237,7 @@ impl Event {
         return Ok(());
     }
 
-    async fn handle_create_permission_event(self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
+    async fn handle_create_permission_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
         let permission = serde_json::from_value::<Permission>(self.data).unwrap();
         
         match Permission::insert(conn, &permission.name, &permission.description).await {
@@ -248,7 +248,7 @@ impl Event {
         return Ok(());
     }
 
-    async fn handle_delete_permission_event(self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
+    async fn handle_delete_permission_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
         let permission_name = serde_json::from_value::<String>(self.data).unwrap();
         
         match Permission::delete(conn, &permission_name).await {
@@ -259,7 +259,7 @@ impl Event {
         return Ok(());
     }
     
-    async fn handle_create_group_event(self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
+    async fn handle_create_group_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
         let group = serde_json::from_value::<Group>(self.data).unwrap();
         
         match Group::insert(conn, group.name, group.description, group.permissions).await {
@@ -270,7 +270,7 @@ impl Event {
         return Ok(());
     }
 
-    async fn handle_delete_group_event(self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
+    async fn handle_delete_group_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
         let group_name = serde_json::from_value::<String>(self.data).unwrap();
         
         match Group::delete(conn, group_name).await {
@@ -281,7 +281,7 @@ impl Event {
         return Ok(());
     }
 
-    async fn handle_register_user_event(self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
+    async fn handle_register_user_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
         let user = serde_json::from_value::<User>(self.data).unwrap();
 
         match User::insert(conn, user.login, user.password_hash, user.details).await {
@@ -292,7 +292,7 @@ impl Event {
         return Ok(());
     }
 
-    async fn handle_login_user_event(self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
+    async fn handle_login_user_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
         let session_id = serde_json::from_value::<i64>(self.data).unwrap();
 
         let _ = LoginSession::update(
@@ -304,13 +304,10 @@ impl Event {
         return Ok(());
     }
 
-    async fn handle_delete_user_event(self, conn: &PgPool) -> Result<(), Box<dyn Error>> {
+    async fn handle_delete_user_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
         let user_login = serde_json::from_value::<String>(self.data).unwrap();
 
-        match User::delete(conn, user_login).await {
-            Ok(()) => (),
-            Err(err) => return Err(err.to_string().into())
-        };
+        let _ = User::delete(conn, user_login).await;
 
         return Ok(());
     }

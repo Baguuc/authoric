@@ -3,7 +3,7 @@
 use std::error::Error;
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
-use sqlx::{query, query_as, FromRow, PgPool};
+use sqlx::{query, query_as, FromRow, PgConnection};
 use crate::{models::Order, util::string::json_value_to_pretty_string};
 
 use super::permission::Permission;
@@ -112,7 +112,7 @@ impl Group {
     /// Lists number of groups in specified order with specified offset from the database
     /// 
     pub async fn list(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         order: Option<Order>,
         offset: Option<usize>,
         limit: Option<usize>
@@ -128,7 +128,7 @@ impl Group {
             limit
         );
         let result = query_as(&sql)
-            .fetch_all(conn)
+            .fetch_all(&mut *conn)
             .await
             .unwrap();
 
@@ -143,7 +143,7 @@ impl Group {
     /// + when group with specified name do not exist
     /// 
     pub async fn retrieve(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         name: &String
     ) -> Result<Self, GroupRetrieveError> {
         let sql = "
@@ -164,7 +164,7 @@ impl Group {
         ";
         let result = query_as(&sql)
             .bind(&name)
-            .fetch_one(conn)
+            .fetch_one(&mut *conn)
             .await;
 
         match result {
@@ -183,35 +183,25 @@ impl Group {
     /// + when the at least one of assigned permissions do not exist
     /// 
     pub async fn insert(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         name: String,
         description: String,
         permissions: Vec<String>
     ) -> Result<(), GroupInsertError> {
-        let mut tx = match conn.begin().await {
-            Ok(tx) => tx,
-            Err(err) => return Err(GroupInsertError::ServerError(err.to_string()))
-        };
-
         let sql = "INSERT INTO groups (name, description) VALUES ($1, $2);".to_string();
         let q = query(&sql).bind(&name).bind(&description);
 
-        match q.execute(&mut *tx).await {
+        match q.execute(&mut *conn).await {
             Ok(_) => (),
             Err(_) => return Err(GroupInsertError::NameError)
         };
 
-        for permission in &permissions {
-            match query("INSERT INTO groups_permissions (group_name, permission_name) VALUES ($1, $2);").bind(&name).bind(&permission).execute(&mut *tx).await {
+        for permission_name in &permissions {
+            match Self::grant_permission(&mut *conn, &name, permission_name).await {
                 Ok(_) => (),
                 Err(_) => return Err(GroupInsertError::NameError)
             }
         }
-
-        let _ = match tx.commit().await {
-            Ok(_) => (),
-            Err(err) => return Err(GroupInsertError::ServerError(err.to_string()))
-        };
 
         return Ok(());
     }
@@ -222,28 +212,21 @@ impl Group {
     /// Deletes a group and all of it's related data from the database
     /// 
     pub async fn delete(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         name: String
     ) -> Result<(), GroupDeleteError> {
-        let mut tx = match conn.begin().await {
-            Ok(tx) => tx,
-            Err(err) => return Err(GroupDeleteError::ServerError(err.to_string()))
-        };
-        
         let sql = "DELETE FROM groups_permissions WHERE group_name = $1;";
         let q = query(&sql).bind(&name);
 
-        let _ = q.execute(&mut *tx).await;
+        let _ = q.execute(&mut *conn).await;
 
         let sql = "DELETE FROM groups WHERE name = $1;".to_string();
         let q = query(&sql).bind(&name);
 
-        match q.execute(&mut *tx).await {
+        match q.execute(&mut *conn).await {
             Ok(_) => (),
             Err(err) => return Err(GroupDeleteError::ServerError(err.to_string()))
         };
-
-        let _ = tx.commit().await;
 
         return Ok(());
     }
@@ -253,7 +236,7 @@ impl Group {
     /// Checks if group has a specified permission
     /// 
     pub async fn has_permission(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         name: &String,
         permission_name: &String
     ) -> Result<bool, GroupRetrieveError> {
@@ -267,7 +250,7 @@ impl Group {
     /// Grants group a permission with specified name
     /// 
     pub async fn grant_permission(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         name: &String,
         permission_name: &String
     ) -> Result<(), GroupGrantError> {
@@ -275,7 +258,7 @@ impl Group {
         let result = query(sql)
             .bind(name)
             .bind(permission_name)
-            .execute(conn)
+            .execute(&mut *conn)
             .await;
 
         match result {
@@ -291,7 +274,7 @@ impl Group {
     /// Revokes a permission from group with specified name
     /// 
     pub async fn revoke_permission(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         name: &String,
         permission_name: &String
     ) -> Result<(), GroupRevokeError> {
@@ -299,7 +282,7 @@ impl Group {
         let result = query(sql)
             .bind(name)
             .bind(permission_name)
-            .execute(conn)
+            .execute(&mut *conn)
             .await
             .unwrap();
 

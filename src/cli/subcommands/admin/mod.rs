@@ -6,6 +6,7 @@ use clap::{
 };
 use colored::Colorize;
 use futures::executor::block_on;
+use sqlx::PgConnection;
 
 use crate::{config::CauthConfig, models::{event::Event, group::Group, permission::{Permission, PermissionRetrieveError}, user::User}, util::io::input};
 
@@ -65,13 +66,16 @@ impl AdminCreateCommand {
         let name = input(format!("{} Enter the name of the permission: ", "+".green())).unwrap();
         let description = input(format!("{} Enter the description of the permission: ", "+".green())).unwrap();
 
-        match Permission::insert(&config.db_conn, &name, &description).await {
+        let mut executor = block_on(config.db_conn.acquire()).unwrap();
+        match Permission::insert(&mut executor, &name, &description).await {
             Ok(_) => (),
             Err(_) => println!("{}", "This permission already exist".red())
         };
     }
 
     async fn create_group(config: CauthConfig) {
+        let mut executor = block_on(config.db_conn.acquire()).unwrap();
+
         let name = input(format!("{} Enter the name of the group: ", "+".green())).unwrap();
         let description = input(format!("{} Enter the description of the group: ", "+".green())).unwrap();
         println!("{} Enter the permission names of the group (empty to stop): ", "+".green());
@@ -79,7 +83,7 @@ impl AdminCreateCommand {
         let mut permissions: Vec<String> = vec![];
 
         while let Ok(permission_name) = input(format!("  {} Enter the name of the permission: ", "+".green())) {
-            match Permission::retrieve(&config.db_conn, &permission_name).await {
+            match Permission::retrieve(&mut executor, &permission_name).await {
                 Ok(_) => {
                     permissions.push(permission_name);
                 },
@@ -89,7 +93,7 @@ impl AdminCreateCommand {
             }
         }
 
-        match Group::insert(&config.db_conn, name, description, permissions).await {
+        match Group::insert(&mut executor, name, description, permissions).await {
             Ok(_) => (),
             Err(_) => println!("{}", "This group already exist".red())
         };
@@ -126,7 +130,8 @@ impl AdminInspectCommand {
     pub fn run(self, config: CauthConfig) {
         match self.entity_type {
             AdminInspectEntityType::Permission(id) => {
-                let permission = match block_on(Permission::retrieve(&config.db_conn, &id.id)) {
+                let mut executor = block_on(config.db_conn.acquire()).unwrap();
+                let permission = match block_on(Permission::retrieve(&mut executor, &id.id)) {
                     Ok(permission) => permission,
                     Err(_) => {
                         println!("{}", format!("Permission \"{}\" not found.", id.id).red());
@@ -137,7 +142,8 @@ impl AdminInspectCommand {
                 println!("{}", permission.to_string());
             },
             AdminInspectEntityType::Group(id) => {
-                let group = match block_on(Group::retrieve(&config.db_conn, &id.id)) {
+                let mut executor = block_on(config.db_conn.acquire()).unwrap();
+                let group = match block_on(Group::retrieve(&mut executor, &id.id)) {
                     Ok(group) => group,
                     Err(_) => {
                         println!("{}", format!("Group \"{}\" not found.", id.id).red());
@@ -148,7 +154,8 @@ impl AdminInspectCommand {
                 println!("{}", group.to_string());
             },
             AdminInspectEntityType::User(id) => {
-                let user = match block_on(User::retrieve(&config.db_conn, &id.id)) {
+                let mut executor = block_on(config.db_conn.acquire()).unwrap();
+                let user = match block_on(User::retrieve(&mut executor, &id.id)) {
                     Ok(user) => user,
                     Err(_) => {
                         println!("{}", format!("User \"{}\" not found.", id.id).red());
@@ -159,7 +166,8 @@ impl AdminInspectCommand {
                 println!("{}", user.to_string());
             },
             AdminInspectEntityType::Event(id) => {
-                let event = match block_on(Event::retrieve(&config.db_conn, id.id)) {
+                let mut executor = block_on(config.db_conn.acquire()).unwrap();
+                let event = match block_on(Event::retrieve(&mut executor, id.id)) {
                     Ok(event) => event,
                     Err(_) => {
                         println!("{}", format!("Event \"{}\" not found.", id.id).red());

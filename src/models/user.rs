@@ -3,7 +3,7 @@ use std::{error::Error, io::Read};
 use argon2::{password_hash::{self, rand_core::OsRng, SaltString}, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::{prelude::FromRow, query, query_as, PgPool};
+use sqlx::{prelude::FromRow, query, query_as, PgConnection, PgPool, Transaction};
 
 use crate::util::string::json_value_to_pretty_string;
 
@@ -53,36 +53,19 @@ pub enum UserInsertError {
     /// or one of the provided groups do not exist
     NameError,
     /// Returned when the provided password cannot be hashed
-    CannotHash(String),
-    /// Returned when transaction fails for some reason,
-    /// also contains the original error string
-    ServerError(String)
+    CannotHash(String)
 }
 
 impl ToString for UserInsertError {
     fn to_string(&self) -> String {
         return match self {
             Self::NameError => "Either the provided login is too long, this user already exist or one of the provided groups do not exist.".to_string(),
-            Self::CannotHash(err) => format!("Password hashing error: {}.", err),
-            Self::ServerError(err) => format!("Server error: {}.", err)
+            Self::CannotHash(err) => format!("Password hashing error: {}.", err)
         }
     }
 }
 
-pub enum UserDeleteError {
-    /// Returned when transaction fails for some reason,
-    /// also contains the original error string
-    ServerError(String)
-}
-
-impl ToString for UserDeleteError {
-    fn to_string(&self) -> String {
-        return match self {
-            Self::ServerError(err) => format!("Server error: {}.", err)
-        }
-    }
-}
-
+pub type UserDeleteError = ();
 pub enum UserHasPermissionError {
     /// Returned when the user do not have queried permissions
     Unauthorized
@@ -109,7 +92,7 @@ impl User {
     /// Lists number of users in specified order with specified offset from the database
     /// 
     pub async fn list(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         order: Option<Order>,
         offset: Option<usize>,
         limit: Option<usize>
@@ -124,7 +107,7 @@ impl User {
             limit
         );
         let result = query_as(&sql)
-            .fetch_all(conn)
+            .fetch_all(&mut *conn)
             .await
             .unwrap();
 
@@ -139,13 +122,13 @@ impl User {
     /// + when permission with specified name do not exist
     /// 
     pub async fn retrieve(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         login: &String
     ) -> Result<Self, UserRetrieveError> {
         let sql = "SELECT * FROM users WHERE login = $1;";
         let result = query_as(&sql)
             .bind(&login)
-            .fetch_one(conn)
+            .fetch_one(&mut *conn)
             .await;
 
         match result {
@@ -163,16 +146,11 @@ impl User {
     /// + when the login is longer than 255 chars
     /// 
     pub async fn insert(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         login: String,
         password: String,
         details: Value
     ) -> Result<(), UserInsertError> {
-        let mut tx = match conn.begin().await {
-            Ok(tx) => tx,
-            Err(err) => return Err(UserInsertError::ServerError(err.to_string()))
-        };
-
         let sql = "
             INSERT INTO
                 users (login, password_hash, details)
@@ -190,19 +168,16 @@ impl User {
         }
         .to_string();
 
-        let q = query(sql)
+        let result = query(sql)
             .bind(&login)
             .bind(password_hash)
-            .bind(&details);
+            .bind(&details)
+            .execute(&mut *conn)
+            .await;
 
-        match q.execute(&mut *tx).await {
+        match result {
             Ok(_) => (),
             Err(_) => return Err(UserInsertError::NameError)
-        };
-
-        match tx.commit().await {
-            Ok(_) => (),
-            Err(err) => return Err(UserInsertError::ServerError(err.to_string()))
         };
 
         return Ok(());
@@ -214,30 +189,26 @@ impl User {
     /// Deletes a user and all of it's related data from the database
     /// 
     pub async fn delete(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         login: String
     ) -> Result<(), UserDeleteError> {
-        let mut tx = match conn.begin().await {
-            Ok(tx) => tx,
-            Err(err) => return Err(UserDeleteError::ServerError(err.to_string()))
-        };
-
         let sql = "DELETE FROM users WHERE login = $1";
         let q = query(sql)
-            .bind(&login);
-        let _ = q.execute(&mut *tx).await;
+            .bind(&login)
+            .execute(&mut *conn)
+            .await;
 
         let sql = "DELETE FROM users_groups WHERE user_login = $1";
         let q = query(sql)
-            .bind(&login);
-        let _ = q.execute(&mut *tx).await;
+            .bind(&login)
+            .execute(&mut *conn)
+            .await;
 
         let sql = "DELETE FROM login_sessions WHERE user_login = $1";
         let q = query(sql)
-            .bind(&login);
-        let _ = q.execute(&mut *tx).await;
-
-        let _ = tx.commit().await;
+            .bind(&login)
+            .execute(&mut *conn)
+            .await;
 
         return Ok(());
     }
@@ -251,7 +222,7 @@ impl User {
     /// 
     pub async fn has_permissions(
         self: &Self,
-        conn: &PgPool,
+        conn: &mut PgConnection,
         permission_name: String
     ) -> Result<(), UserHasPermissionError> {
         let sql = "
@@ -278,7 +249,7 @@ impl User {
             .bind(&self.login)
             .bind(&permission_name);
         let num_rows = q
-            .execute(conn)
+            .execute(&mut *conn)
             .await
             .unwrap()
             .rows_affected();
@@ -299,7 +270,7 @@ impl User {
     /// + When the credentials are invalid
     /// 
     pub async fn login(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         login: String,
         password: String,
         session_status: LoginSessionStatus

@@ -3,7 +3,7 @@
 use std::error::Error;
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, query, query_as, PgPool};
+use sqlx::{FromRow, query, query_as, PgConnection};
 use crate::{models::Order, util::string::json_value_to_pretty_string};
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -69,7 +69,7 @@ impl Permission {
     /// Lists number of permissions in specified order with specified offset from the database
     /// 
     pub async fn list(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         order: Option<Order>,
         offset: Option<usize>,
         limit: Option<usize>
@@ -85,7 +85,7 @@ impl Permission {
             limit
         );
         let result = query_as(&sql)
-            .fetch_all(conn)
+            .fetch_all(&mut *conn)
             .await
             .unwrap();
 
@@ -100,13 +100,13 @@ impl Permission {
     /// + when permission with specified name do not exist
     /// 
     pub async fn retrieve(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         name: &String
     ) -> Result<Self, PermissionRetrieveError> {
         let sql = "SELECT * FROM permissions WHERE name = $1;";
         let result = query_as(&sql)
             .bind(&name)
-            .fetch_one(conn)
+            .fetch_one(&mut *conn)
             .await;
 
         match result {
@@ -124,14 +124,14 @@ impl Permission {
     /// + when the name is longer than 255 chars or description is longer than 3000 chars
     /// 
     pub async fn insert(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         name: &String,
         description: &String
     ) -> Result<(), PermissionInsertError> {
         let sql = "INSERT INTO permissions (name, description) VALUES ($1, $2);".to_string();
         let q = query(&sql).bind(&name).bind(&description);
 
-        match q.execute(conn).await {
+        match q.execute(&mut *conn).await {
             Ok(_) => return Ok(()),
             Err(_) => return Err(PermissionInsertError::NameError)
         };
@@ -142,13 +142,13 @@ impl Permission {
     /// Deletes a permission with provided name from the database
     /// 
     pub async fn delete(
-        conn: &PgPool,
+        conn: &mut PgConnection,
         name: &String
     ) -> Result<(), PermissionDeleteError> {
         let sql = "DELETE FROM permissions WHERE name = $1;";
         let q = query(&sql)
             .bind(&name)
-            .execute(conn)
+            .execute(&mut *conn)
             .await;
         
         return Ok(());
