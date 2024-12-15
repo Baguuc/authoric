@@ -86,6 +86,34 @@ pub enum UserLoginError {
     InvalidCredentials
 }
 
+pub enum UserGrantError {
+    /// Returned either when a user with provided login do not exist
+    /// or provided group do not exist
+    NameError
+}
+
+impl ToString for GroupGrantError {
+    fn to_string(&self) -> String {
+        return match self {
+            Self::NameError => "Provided user or group do not exist".to_string()
+        };
+    }
+}
+
+pub enum UserRevokeError {
+    /// Returned either when a user with provided login do not exist
+    /// or provided group do not exist
+    NameError
+}
+
+impl ToString for GroupRevokeError {
+    fn to_string(&self) -> String {
+        return match self {
+            Self::NameError => "Provided user or group do not exist".to_string()
+        };
+    }
+}
+
 impl User {
     /// ## User::list
     /// 
@@ -218,54 +246,6 @@ impl User {
     /// Check if a user has a specified permission
     /// 
     /// Errors:
-    /// + When the user do not have the provided permission
-    /// 
-    pub async fn has_permissions(
-        self: &Self,
-        conn: &mut PgConnection,
-        permission_name: String
-    ) -> Result<(), UserHasPermissionError> {
-        let sql = "
-            SELECT
-                gp.permission_name
-            FROM
-                users u
-            INNER JOIN
-                users_groups ug
-            ON
-                u.login = ug.user_login
-            INNER JOIN
-                groups_permissions gp
-            ON
-                ug.group_name = gp.group_name
-            WHERE
-                u.login = $1
-            AND
-                gp.permission_name  = $2
-            LIMIT
-                1;
-        ";
-        let q = query(sql)
-            .bind(&self.login)
-            .bind(&permission_name);
-        let num_rows = q
-            .execute(&mut *conn)
-            .await
-            .unwrap()
-            .rows_affected();
-
-        if num_rows < 1 {
-            return Err(UserHasPermissionError::Unauthorized);
-        }
-
-        return Ok(());
-    }
-
-    /// ## User::has_permission
-    /// 
-    /// Check if a user has a specified permission
-    /// 
-    /// Errors:
     /// + When the user do not exist
     /// + When the credentials are invalid
     /// 
@@ -295,5 +275,104 @@ impl User {
         .unwrap();
 
         return Ok(session_id);
+    }
+
+    /// ## User::has_permission
+    /// 
+    /// Check if a user has a specified permission
+    /// 
+    pub async fn has_permissions(
+        self: &Self,
+        conn: &mut PgConnection,
+        permission_name: String
+    ) -> bool {
+        let sql = "
+            SELECT
+                gp.permission_name
+            FROM
+                users u
+            INNER JOIN
+                users_groups ug
+            ON
+                u.login = ug.user_login
+            INNER JOIN
+                groups_permissions gp
+            ON
+                ug.group_name = gp.group_name
+            WHERE
+                u.login = $1
+            AND
+                gp.permission_name  = $2
+            LIMIT
+                1;
+        ";
+        let q = query(sql)
+            .bind(&self.login)
+            .bind(&permission_name);
+        let num_rows = q
+            .execute(&mut *conn)
+            .await
+            .unwrap()
+            .rows_affected();
+
+        if num_rows == 0 {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// ## User::grant_group
+    /// 
+    /// Grants user a group with specified name
+    /// 
+    /// Errors:
+    /// + When provided user or group do not exist
+    /// 
+    pub async fn grant_permission(
+        conn: &mut PgConnection,
+        login: &String,
+        group_name: &String
+    ) -> Result<(), UserGrantError> {
+        let sql = "INSERT INTO users_groups (user_login, group_name) VALUES ($1, $2);";
+        let result = query(sql)
+            .bind(name)
+            .bind(permission_name)
+            .execute(&mut *conn)
+            .await;
+
+        match result {
+            Ok(_) => (),
+            Err(_) => return Err(UserGrantError::NameError)
+        };
+
+        return Ok(());
+    }
+
+    /// ## User::revoke_group
+    /// 
+    /// Revokes a group from user with specified login
+    /// 
+    /// Errors:
+    /// + When provided user or group do not exist
+    /// 
+    pub async fn revoke_permission(
+        conn: &mut PgConnection,
+        login: &String,
+        group_name: &String
+    ) -> Result<(), UserRevokeError> {
+        let sql = "DELETE FROM users_groups WHERE user_login = $1 AND group_name = $2;";
+        let result = query(sql)
+            .bind(name)
+            .bind(permission_name)
+            .execute(&mut *conn)
+            .await
+            .unwrap();
+
+        if result.rows_affected() == 0 {
+            return Err(UserRevokeError::NameError);
+        }
+
+        return Ok(());
     }
 }
