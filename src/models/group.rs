@@ -249,6 +249,9 @@ impl Group {
     /// 
     /// Grants group a permission with specified name
     /// 
+    /// Errors:
+    /// + When provided group or permission do not exist
+    /// 
     pub async fn grant_permission(
         conn: &mut PgConnection,
         name: &String,
@@ -272,6 +275,9 @@ impl Group {
     /// ## Group::revoke_permission
     /// 
     /// Revokes a permission from group with specified name
+    /// 
+    /// Errors:
+    /// + When provided group or permission do not exist
     /// 
     pub async fn revoke_permission(
         conn: &mut PgConnection,
