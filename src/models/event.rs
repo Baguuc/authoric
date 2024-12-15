@@ -6,7 +6,7 @@ use sqlx::{prelude::FromRow, query, query_as, PgPool};
 
 use crate::util::string::json_value_to_pretty_string;
 
-use super::{group::Group, login_session::{LoginSession, LoginSessionStatus, LoginSessionUpdateData}, permission::{Permission, PermissionInsertError}, user::{User, UserCredentials}, Order};
+use super::{group::Group, login_session::{LoginSession, LoginSessionStatus}, permission::{Permission, PermissionInsertError}, user::{User, UserCredentials}, Order};
 
 #[derive(FromRow, Serialize, Deserialize)]
 pub struct EventRaw {
@@ -298,9 +298,7 @@ impl Event {
         let _ = LoginSession::update(
             conn,
             &session_id,
-            LoginSessionUpdateData {
-                status: LoginSessionStatus::Commited
-            }
+            LoginSessionStatus::Commited
         );
 
         return Ok(());

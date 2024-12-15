@@ -1,7 +1,9 @@
-use std::error::Error;
+use std::{error::Error, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 use sqlx::{query, query_as, FromRow, PgPool};
+
+use crate::util::string::json_value_to_pretty_string;
 
 #[derive(Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum LoginSessionStatus {
@@ -43,24 +45,70 @@ pub struct LoginSession {
     pub status: LoginSessionStatus
 }
 
-pub struct LoginSessionUpdateData {
-    pub status: LoginSessionStatus,
+impl ToString for LoginSession {
+    fn to_string(&self) -> String {
+        let raw = LoginSessionRaw {
+            id: self.id.clone(),
+            user_login: self.user_login.clone(),
+            status: self.status.to_string()
+        };
+        let formatted = json_value_to_pretty_string(&serde_json::to_value(raw).unwrap());
+
+        return formatted;
+    } 
 }
 
+pub enum LoginSessionRetrieveError {
+    /// Returned when the session is not found
+    NotFound
+}
+
+impl ToString for LoginSessionRetrieveError {
+    fn to_string(&self) -> String {
+        return match self {
+            Self::NotFound => "Login session not found".to_string()
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum LoginSessionInsertError {
+    /// Returned when the user attached to the session does not exist
+    UserNotFound
+}
+
+impl ToString for LoginSessionInsertError {
+    fn to_string(&self) -> String {
+        return match self {
+            Self::UserNotFound => "Mentioned user not found".to_string()
+        }
+    }
+}
+
+pub enum LoginSessionDeleteError {
+    /// Returned when the session wasn't deleted because it never existed
+    NotFound
+}
+
+impl ToString for LoginSessionDeleteError {
+    fn to_string(&self) -> String {
+        return match self {
+            Self::NotFound => "Login session not found".to_string()
+        }
+    }
+}
+
+type LoginSessionUpdateError = ();
+
 impl LoginSession {
-    /// ## LoginSession::select
+    /// ## LoginSession::retrieve
     /// 
     /// Selects a user's loggin session with specified id from the database
     /// 
-    pub async fn select(
+    pub async fn retrieve(
         conn: &PgPool,
         id: i64
-    ) -> Result<Self, Box<dyn Error>> {
-        let mut tx = match conn.begin().await {
-            Ok(tx) => tx,
-            Err(_) => return Err("Something went wrong.".into())
-        };
-
+    ) -> Result<Self, LoginSessionRetrieveError> {
         let sql = "
             SELECT 
                 *
@@ -73,9 +121,9 @@ impl LoginSession {
         let q = query_as(&sql)
             .bind(&id);
 
-        let raw: LoginSessionRaw = match q.fetch_one(&mut *tx).await {
+        let raw: LoginSessionRaw = match q.fetch_one(conn).await {
             Ok(raw) => raw,
-            Err(_) => return Err("User not found".into())
+            Err(_) => return Err(LoginSessionRetrieveError::NotFound)
         };
 
         let session = LoginSession {
@@ -83,8 +131,6 @@ impl LoginSession {
             user_login: raw.user_login,
             status: LoginSessionStatus::from(raw.status)
         };
-
-        let _ = tx.commit().await;
 
         return Ok(session);
     }
@@ -100,12 +146,7 @@ impl LoginSession {
         conn: &PgPool,
         user_login: String,
         status: LoginSessionStatus
-    ) -> Result<i64, Box<dyn Error>> {
-        let mut tx = match conn.begin().await {
-            Ok(tx) => tx,
-            Err(_) => return Err("Something went wrong.".into())
-        };
-
+    ) -> Result<i64, LoginSessionInsertError> {
         let sql = "
             INSERT INTO
                 login_sessions (user_login, status)
@@ -115,17 +156,17 @@ impl LoginSession {
             ;
         ";
 
-        let q = query_as(sql)
+        let result = query_as(sql)
             .bind(&user_login)
-            .bind(status.to_string());
+            .bind(status.to_string())
+            .fetch_one(conn)
+            .await;
 
-        let row: (i64,) = match q.fetch_one(&mut *tx).await {
+        let row: (i64,) = match result {
             Ok(row) => row,
-            Err(_) => return Err("This user do not exist".into())
+            Err(_) => return Err(LoginSessionInsertError::UserNotFound)
         };
         let session_id = row.0;
-
-        let _ = tx.commit().await;
 
         return Ok(session_id);
     }
@@ -138,34 +179,36 @@ impl LoginSession {
     pub async fn delete(
         conn: &PgPool,
         session_id: i64
-    ) -> Result<(), Box<dyn Error>> {
-        let mut tx = match conn.begin().await {
-            Ok(tx) => tx,
-            Err(_) => return Err("Something went wrong.".into())
-        };
-
+    ) -> Result<(), LoginSessionDeleteError> {
         let sql = "DELETE FROM login_sessions WHERE id = $1";
-        let q = query(sql)
-            .bind(&session_id);
-        let _ = q.execute(&mut *tx).await;
+        let result = query(sql)
+            .bind(&session_id)
+            .execute(conn)
+            .await;
 
-        let _ = tx.commit().await;
+        let rows_affected = result
+            .unwrap()
+            .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(LoginSessionDeleteError::NotFound)
+        }
 
         return Ok(());
     }
     
     /// ## LoginSession::update
     /// 
-    /// Updates a login session with the specified new data
+    /// Updates a login session with new status
     /// 
     pub async fn update(
         conn: &PgPool,
         session_id: &i64,
-        new_data: LoginSessionUpdateData
-    ) -> Result<(), Box<dyn Error>> {
+        new_status: LoginSessionStatus
+    ) -> Result<(), LoginSessionUpdateError> {
         let sql = "UPDATE login_sessions SET status = $1 WHERE id = $2;";
         let result = query(sql)
-            .bind(new_data.status.to_string())
+            .bind(new_status.to_string())
             .bind(session_id)
             .execute(conn)
             .await;
