@@ -4,7 +4,7 @@ use std::error::Error;
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use sqlx::{query, query_as, FromRow, PgConnection};
-use crate::{models::Order, util::string::json_value_to_pretty_string};
+use crate::{models::{Order,event::{Event, EventType}}, util::string::json_value_to_pretty_string};
 
 use super::permission::Permission;
 
@@ -297,5 +297,51 @@ impl Group {
         }
 
         return Ok(());
+    }
+
+    /// ## Group::event
+    ///
+    /// Get an GroupEvent instance for group event creation
+    ///
+    pub fn event() -> GroupEvent {
+        return GroupEvent;
+    }
+}
+
+struct GroupEvent;
+
+impl GroupEvent {
+    /// ## GroupEvent::insert
+    ///
+    /// Insert a GroupCreate event into database
+    ///
+    pub async fn insert(
+        conn: &mut PgConnection,
+        name: String,
+        description: String,
+        permissions: Vec<String>
+    ) {
+        let data = Group {
+            name,
+            description,
+            permissions
+        };
+        let data = serde_json::to_value(&data).unwrap();
+
+        let _ = Event::insert(conn, EventType::GroupCreate, data).await;
+    }
+
+
+    /// ## GroupEvent::delete
+    ///
+    /// Insert a GroupDelete event into database
+    ///
+    pub async fn delete(
+        conn: &mut PgConnection,
+        name: String
+    ) {
+        let data = serde_json::to_value(&name).unwrap();
+
+        let _ = Event::insert(conn, EventType::GroupDelete, data).await;
     }
 }
