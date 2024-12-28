@@ -4,7 +4,7 @@ use std::error::Error;
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, query, query_as, PgConnection};
-use crate::{models::Order, util::string::json_value_to_pretty_string};
+use crate::{models::{Order, event::{Event, EventType}}, util::string::json_value_to_pretty_string};
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Permission {
@@ -152,5 +152,52 @@ impl Permission {
             .await;
         
         return Ok(());
+    }
+
+
+    /// ## Permission::event
+    ///
+    /// Get an PermissionEvent instance for permission event creation
+    ///
+    pub fn event() -> PermissionEvent {
+        return PermissionEvent;
+    }
+}
+
+
+struct PermissionEvent;
+
+
+impl PermissionEvent {
+    /// ## PermissionEvent::insert
+    ///
+    /// Insert a PermissionCreate event into database
+    ///
+    pub async fn insert(
+        conn: &mut PgConnection,
+        name: String,
+        description: String
+    ) {
+        let data = Permission {
+            name,
+            description
+        };
+        let data = serde_json::to_value(&data).unwrap();
+
+        let _ = Event::insert(conn, EventType::PermissionCreate, data).await;
+    }
+
+
+    /// ## PermissionEvent::delete
+    ///
+    /// Insert a PermissionDelete event into database
+    ///
+    pub async fn delete(
+        conn: &mut PgConnection,
+        name: String
+    ) {
+        let data = serde_json::to_value(&name).unwrap();
+
+        let _ = Event::insert(conn, EventType::PermissionDelete, data).await;
     }
 }
