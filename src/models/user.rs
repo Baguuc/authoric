@@ -7,7 +7,7 @@ use sqlx::{prelude::FromRow, query, query_as, PgConnection, PgPool, Transaction}
 
 use crate::util::string::json_value_to_pretty_string;
 
-use super::{login_session::{LoginSession, LoginSessionStatus}, Order};
+use crate::models::{event::{Event, EventType}, login_session::{LoginSession, LoginSessionStatus}, Order};
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct User {
@@ -186,15 +186,11 @@ impl User {
                 ($1, $2, $3)
             ;
         ";
-        
-        let pwd = password.as_bytes();
-        let salt = SaltString::generate(&mut OsRng);
-
-        let password_hash = match Argon2::default().hash_password(pwd, &salt) {
+       
+        let password_hash = match hash_password(password) {
             Ok(hash) => hash,
             Err(err) => return Err(UserInsertError::CannotHash(err.to_string()))
-        }
-        .to_string();
+        };
 
         let result = query(sql)
             .bind(&login)
@@ -375,4 +371,95 @@ impl User {
 
         return Ok(());
     }
+
+
+    /// ## User::event
+    ///
+    /// Get an UserEvent instance for user event creation
+    ///
+    pub fn event() -> UserEvent {
+        return UserEvent;
+    }
+}
+
+
+struct UserEvent;
+
+
+impl UserEvent {
+    /// ## UserEvent::register
+    ///
+    /// Insert a UserRegister event into database
+    ///
+    /// Errors:
+    /// + The password cannot be hashed
+    ///
+    pub async fn register(
+        conn: &mut PgConnection,
+        login: String,
+        password: String,
+        details: serde_json::Value
+    ) -> Result<(), UserInsertError> {
+        let password_hash = match hash_password(password) {
+            Ok(hash) => hash,
+            Err(e) => return Err(UserInsertError::CannotHash(e.to_string()))
+        };
+        let data = User {
+            login,
+            password_hash,
+            details
+        };
+        let data = serde_json::to_value(&data).unwrap();
+        let _ = Event::insert(conn, EventType::UserRegister, data).await;
+    
+        return Ok(());
+    }
+
+
+    /// ## UserEvent::login
+    ///
+    /// Insert a UserLogin event into database
+    ///
+    /// Errors:
+    /// + When the credentials are incorrect and the login session cannot be created
+    ///
+    pub async fn login(
+        conn: &mut PgConnection,
+        login: String,
+        password: String
+    ) -> Result<(), UserLoginError> {
+        let session_id = User::login(conn, login, password, LoginSessionStatus::OnHold).await?;
+        let data = serde_json::to_value(&session_id).unwrap();
+        let _ = Event::insert(conn, EventType::UserLogin, data).await;
+        
+        return Ok(());
+    }
+     
+
+
+    /// ## UserEvent::delete
+    ///
+    /// Insert a UserDelete event into database
+    ///
+    pub async fn delete(
+        conn: &mut PgConnection,
+        login: String
+    ) {
+        let data = serde_json::to_value(&login).unwrap();
+        let _ = Event::insert(conn, EventType::UserDelete, data).await;
+    }
+}
+
+
+fn hash_password(password: String) -> Result<String, String> {
+    let pwd = password.as_bytes();
+    let salt = SaltString::generate(&mut OsRng);
+
+    let password_hash = match Argon2::default().hash_password(pwd, &salt) {
+        Ok(hash) => hash,
+        Err(err) => return Err(err.to_string())
+    }
+    .to_string();
+    
+    return Ok(password_hash);
 }
