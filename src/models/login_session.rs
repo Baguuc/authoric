@@ -1,11 +1,10 @@
 use std::{fmt::Debug,time::{self,UNIX_EPOCH}};
-use crypto:{
+use crypto::{
   digest::Digest,
   sha3::Sha3
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{query, query_as, FromRow, PgConnection};
-
 use crate::util::string::json_value_to_pretty_string;
 
 #[derive(Deserialize, Serialize, Clone, PartialEq, Eq)]
@@ -38,14 +37,16 @@ impl ToString for LoginSessionStatus {
 pub struct LoginSessionRaw {
   pub id: i64,
   pub user_login: String,
-  pub status: String
+  pub status: String,
+  pub token: String
 }
 
 #[derive(Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct LoginSession {
   pub id: i64,
   pub user_login: String,
-  pub status: LoginSessionStatus
+  pub status: LoginSessionStatus,
+  pub token: String
 }
 
 impl ToString for LoginSession {
@@ -53,7 +54,8 @@ impl ToString for LoginSession {
     let raw = LoginSessionRaw {
       id: self.id.clone(),
       user_login: self.user_login.clone(),
-      status: self.status.to_string()
+      status: self.status.to_string(),
+      token: self.token.clone()
     };
     let formatted = json_value_to_pretty_string(&serde_json::to_value(raw).unwrap());
 
@@ -77,15 +79,16 @@ impl ToString for LoginSessionRetrieveError {
 #[derive(Debug)]
 pub enum LoginSessionInsertError {
   /// Returned when the user attached to the session does not exist
-  UserNotFound
+  UserNotFound,
   /// Returned when the token hash cannot be created
-  CannotHash
+  CannotHash(String)
 }
 
 impl ToString for LoginSessionInsertError {
   fn to_string(&self) -> String {
     return match self {
-      Self::UserNotFound => "Mentioned user not found".to_string()
+      Self::UserNotFound => "Mentioned user not found".to_string(),
+      Self::CannotHash(err) => format!("Cannot hash the token. Details;\n{}", err)
     }
   }
 }
@@ -125,7 +128,7 @@ impl LoginSession {
     ";
 
     let q = query_as(&sql)
-      .bind(&id);
+      .bind(&token);
 
     let raw: LoginSessionRaw = match q.fetch_one(&mut *conn).await {
       Ok(raw) => raw,
@@ -135,7 +138,8 @@ impl LoginSession {
     let session = LoginSession {
       id: raw.id,
       user_login: raw.user_login,
-      status: LoginSessionStatus::from(raw.status)
+      status: LoginSessionStatus::from(raw.status),
+      token: raw.token
     };
 
     return Ok(session);
@@ -159,13 +163,14 @@ impl LoginSession {
       VALUES
         ($1, $2, $3)
       RETURNING token;
-      ;
     ";
     
     let time_since_epoch = match time::SystemTime::now().duration_since(UNIX_EPOCH) {
       Ok(time) => time,
-      Err(_) => return Err(LogginSessionInsertError::CannotHash)
-    };
+      Err(err) => return Err(LoginSessionInsertError::CannotHash(err.to_string()))
+    }
+    .as_secs();
+
     let to_hash = format!("{}{}", &user_login, time_since_epoch);
 
     let mut hasher = Sha3::keccak256();

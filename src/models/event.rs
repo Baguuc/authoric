@@ -169,7 +169,7 @@ impl Event {
   /// Inserts a event with provided data into the database <br>
   /// 
   pub async fn insert(conn: &mut PgConnection, _type: EventType, data: Value) -> Result<Self, EventInsertError> {
-    let sql = "INSERT INTO events (_type, status, data) VALUES ($1, $2, $3) RETURNING id;";
+    let sql = "INSERT INTO events (_type, data) VALUES ($1, $2) RETURNING id;";
     let result = query_as(sql)
       .bind(_type.to_string())
       .bind(data)

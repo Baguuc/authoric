@@ -3,10 +3,8 @@ use argon2::{password_hash::{self, rand_core::OsRng, SaltString}, Argon2, Passwo
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{prelude::FromRow, query, query_as, PgConnection};
-
 use crate::util::string::json_value_to_pretty_string;
-
-use crate::models::{event::{Event, EventType}, login_session::{LoginSession, LoginSessionStatus}, Order};
+use crate::models::{event::{Event, EventType}, login_session::{LoginSession, LoginSessionStatus, LoginSessionInsertError}, Order};
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct User {
@@ -82,7 +80,9 @@ pub enum UserLoginError {
   /// Returned when the user is not found
   NotFound,
   /// Returned when the credentials are invalid
-  InvalidCredentials
+  InvalidCredentials,
+  /// Returned when the token hash cannot be created
+  CannotHash(String)
 }
 
 pub enum UserGrantError {
@@ -249,7 +249,7 @@ impl User {
     login: String,
     password: String,
     session_status: LoginSessionStatus
-  ) -> Result<i64, UserLoginError> {
+  ) -> Result<String, UserLoginError> {
     let user = match Self::retrieve(conn, &login).await {
       Ok(user) => user,
       Err(_) => return Err(UserLoginError::NotFound)
@@ -261,15 +261,23 @@ impl User {
       Err(_) => return Err(UserLoginError::InvalidCredentials)
     };
 
-    let session_id = LoginSession::insert(
+    let result = LoginSession::insert(
       conn,
       login,
       session_status
     )
-    .await
-    .unwrap();
+    .await;
 
-    return Ok(session_id);
+    let token = match result {
+      Ok(token) => token,
+      Err(err) => match err {
+        LoginSessionInsertError::CannotHash(e) => return Err(UserLoginError::CannotHash(e)),
+        // this will not be reached because we know that this user exist as we fetched it before
+        _ => panic!()
+      }
+    };
+
+    return Ok(token);
   }
 
   /// ## User::has_permission
