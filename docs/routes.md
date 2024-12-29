@@ -1,6 +1,5 @@
 # Routes
 Here all the routes of the API are listed.
-Flowcharts for more complicated routes are avaible in the docs/flowchart directory.
 
 ## Permissions
 
@@ -11,12 +10,9 @@ Requirements:
 + User have to have the "permissions:get" permission
 
 Query parameters:
-+ session_id - Required, ID of login session retrieved from POST /user route
-+ auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
++ session_token - Required, token of login session retrieved from POST /user route
 + order_in - Optional, order in which the data should be returned in (default: desc)
-+ limit - Optional, describes how much rows should be returned (default: None)
-+ with_name - Optional, filters what name the retrieved permission will have (default: retrieves any)
-
++ page - Optional, the data is returned in pages, max 10 entries per page. This parameter indicates which page to fetch.
 
 ### POST /permissions
 Creates a permission
@@ -32,7 +28,7 @@ JSON Content:
 + description - Required, permission description
 
 Query parameters:
-+ session_id - Required, ID of login session retrieved from POST /user route
++ session_token - Required, token of login session retrieved from POST /user route
 + auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
 ### DELETE /permissions/{name}
@@ -45,7 +41,7 @@ Requirements:
 + User have to have the "permissions:delete" permission
 
 Query Parameters:
-+ session_id - Required, ID of login session retrieved from POST /user route
++ session_token - Required, token of login session retrieved from POST /user route
 + auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
 ## Groups
@@ -57,12 +53,9 @@ Requirements:
 + User have to have the "groups:get" permission
 
 Query parameters
-+ session_id - Required, ID of login session retrieved from POST /user route
-+ auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
++ session_token - Required, token of login session retrieved from POST /user route
 + order_in - Optional, order in which the data should be returned in (default: descending)
-+ limit - Optional, describes how much rows should be returned (default: None)
-+ with_name - Optional, filters what name the retrieved group will have (default: retrieves any)
-
++ page - Optional, the data is returned in pages, max 10 entries per page. This parameter indicates which page to fetch.
 
 ### POST /groups
 Creates a group
@@ -78,7 +71,7 @@ JSON Content:
 + description - Required, groups description
 
 Query parameters:
-+ session_id - Required, ID of login session retrieved from POST /user route
++ session_token - Required, token of login session retrieved from POST /user route
 + auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
 
@@ -92,7 +85,7 @@ Requirements:
 + User have to have the "groups:delete" permission
 
 Query parameters:
-+ session_id - Required, ID of login session retrieved from POST /user route
++ session_token - Required, token of login session retrieved from POST /user route
 + auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
 ### POST /groups/{name}/{permission_name}
@@ -138,8 +131,17 @@ Requirements:
 + user have to have "users:delete:{user}" permission
 
 Query parameters
-+ session_id - Required, ID of login session retrieved from POST /user route
++ session_token - Required, token of login session retrieved from POST /user route
 + auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
+
+### GET /user
+Get the currently logged in user data.
+
+Errors:
++ When the session do not exist
+
+Query parameters:
++ session_token - Required, token of login session retrieved from POST /user route
 
 ### POST /user
 Logs in to a user account, creating a new session
@@ -152,12 +154,11 @@ Query parameters:
 + password - Required, represents the password to assign
 + auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
-
-### DELETE /user
+## DELETE /user
 Logs out from the user's account, deleting the session
 
 Query parameters:
-+ session_id - Required, ID of login session retrieved from POST /user route
++ session_token - Required, token of login session retrieved from POST /user route
 
 ### POST /users/{name}/{group_name}
 Grants user a group
@@ -168,6 +169,9 @@ Fails when a mentioned user or group do not exist.
 Requirements:
 + User have to have the "users:update" permission
 
+Query parameters:
++ session_token - Required, token of login session retrieved from POST /user route
+
 ### DELETE /users/{name}/{group_name}
 Revokes a group from user
 
@@ -177,13 +181,16 @@ Fails when a mentioned user do not exist or user do not have mentioned group.
 Requirements:
 + User have to have the "users:update" permission
 
+Query parameters:
++ session_token - Required, token of login session retrieved from POST /user route
+
 ## Event
 
 ### POST /events/{id}
 Commits an event with specified ID.
 
 Requirements:
-+ session_id - Required, ID of login session retrieved from POST /user route
++ session_token - Required, token of login session retrieved from POST /user route
 + auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 + User have to have the "event:use_{id}" permission (it's granted to him and the default admin group while creating the event)
 
@@ -192,6 +199,6 @@ Requirements:
 Cancels an event with specified ID.
 
 Requirements:
-+ session_id - Required, ID of login session retrieved from POST /user route
++ session_token - Required, token of login session retrieved from POST /user route
 + auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 + User have to have the "event:use_{id}" permission (it's granted to him and the default admin group while creating the event)
