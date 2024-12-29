@@ -7,7 +7,7 @@ use crate::config::CauthConfig;
 pub struct DaemonCommand;
 
 impl DaemonCommand {
-    pub fn run(self, config: CauthConfig) {
-        todo!()
-    }
+  pub fn run(self, config: CauthConfig) {
+    todo!()
+  }
 }

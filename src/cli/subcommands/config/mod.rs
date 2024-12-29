@@ -1,6 +1,6 @@
 use clap::{
-    Args,
-    Subcommand
+  Args,
+  Subcommand
 };
 
 use crate::config::CauthConfig;
@@ -8,21 +8,21 @@ use crate::config::CauthConfig;
 
 #[derive(Debug, Args)]
 pub struct ConfigCommand {
-    #[clap(subcommand)]
-    pub action: ConfigAction
+  #[clap(subcommand)]
+  pub action: ConfigAction
 }
 
 #[derive(Debug, Subcommand)]
 pub enum ConfigAction {
-    Edit
+  Edit
 }
 
 impl ConfigCommand {
-    pub fn run(self) {
-        match self.action {
-            ConfigAction::Edit => {
-                CauthConfig::edit();
-            }
-        };
-    }
+  pub fn run(self) {
+    match self.action {
+      ConfigAction::Edit => {
+        CauthConfig::edit();
+      }
+    };
+  }
 }

@@ -6,16 +6,16 @@ pub mod event;
 
 
 pub enum Order {
-    Ascending,
-    Descending
+  Ascending,
+  Descending
 }
 
 
 impl ToString for Order {
-    fn to_string(&self) -> String {
-        return match self {
-            Order::Ascending => "ASC".to_string(),
-            Order::Descending => "DESC".to_string(),
-        };
-    }
+  fn to_string(&self) -> String {
+    return match self {
+      Order::Ascending => "ASC".to_string(),
+      Order::Descending => "DESC".to_string(),
+    };
+  }
 }

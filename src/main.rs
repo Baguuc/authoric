@@ -8,6 +8,6 @@ mod util;
 
 #[tokio::main]
 async fn main() {
-    let cli = CauthCli::parse();
-    let _ = cli.run();
+  let cli = CauthCli::parse();
+  let _ = cli.run();
 }
