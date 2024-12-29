@@ -4,7 +4,17 @@ pub mod user;
 pub mod login_session;
 pub mod event;
 
+use serde::Deserialize;
+pub use crate::models::{
+    permission::Permission,
+    group::Group,
+    user::User,
+    login_session::LoginSession,
+    event::Event
+};
 
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
 pub enum Order {
   Ascending,
   Descending

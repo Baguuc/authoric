@@ -1,4 +1,8 @@
-
+use std::{fmt::Debug,time::{self,UNIX_EPOCH}};
+use crypto:{
+  digest::Digest,
+  sha3::Sha3
+};
 use serde::{Deserialize, Serialize};
 use sqlx::{query, query_as, FromRow, PgConnection};
 
@@ -74,6 +78,8 @@ impl ToString for LoginSessionRetrieveError {
 pub enum LoginSessionInsertError {
   /// Returned when the user attached to the session does not exist
   UserNotFound
+  /// Returned when the token hash cannot be created
+  CannotHash
 }
 
 impl ToString for LoginSessionInsertError {
@@ -102,11 +108,11 @@ type LoginSessionUpdateError = ();
 impl LoginSession {
   /// ## LoginSession::retrieve
   /// 
-  /// Selects a user's loggin session with specified id from the database
+  /// Selects a user's loggin session with specified token from the database
   /// 
   pub async fn retrieve(
     conn: &mut PgConnection,
-    id: i64
+    token: String
   ) -> Result<Self, LoginSessionRetrieveError> {
     let sql = "
       SELECT 
@@ -114,9 +120,10 @@ impl LoginSession {
       FROM
         login_sessions
       WHERE
-        id = $1
+        token = $1
       ;
     ";
+
     let q = query_as(&sql)
       .bind(&id);
 
@@ -145,29 +152,40 @@ impl LoginSession {
     conn: &mut PgConnection,
     user_login: String,
     status: LoginSessionStatus
-  ) -> Result<i64, LoginSessionInsertError> {
+  ) -> Result<String, LoginSessionInsertError> {
     let sql = "
       INSERT INTO
-        login_sessions (user_login, status)
+        login_sessions (user_login, status, token)
       VALUES
-        ($1, $2)
-      RETURNING id;
+        ($1, $2, $3)
+      RETURNING token;
       ;
     ";
+    
+    let time_since_epoch = match time::SystemTime::now().duration_since(UNIX_EPOCH) {
+      Ok(time) => time,
+      Err(_) => return Err(LogginSessionInsertError::CannotHash)
+    };
+    let to_hash = format!("{}{}", &user_login, time_since_epoch);
+
+    let mut hasher = Sha3::keccak256();
+    hasher.input_str(to_hash.as_str());
+    let token = hasher.result_str();
 
     let result = query_as(sql)
       .bind(&user_login)
       .bind(status.to_string())
+      .bind(&token)
       .fetch_one(&mut *conn)
       .await;
 
-    let row: (i64,) = match result {
+    let row: (String,) = match result {
       Ok(row) => row,
       Err(_) => return Err(LoginSessionInsertError::UserNotFound)
     };
-    let session_id = row.0;
+    let token = row.0;
 
-    return Ok(session_id);
+    return Ok(token);
   }
 
 

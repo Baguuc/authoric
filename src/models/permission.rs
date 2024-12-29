@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, query, query_as, PgConnection};
 use crate::{models::{Order, event::{Event, EventType}}, util::string::json_value_to_pretty_string};
 
-#[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Permission {
   pub name: String,
   pub description: String,
@@ -20,6 +20,7 @@ impl ToString for Permission {
   }
 }
 
+#[derive(Debug)]
 pub enum PermissionListError {}
 
 impl ToString for PermissionListError {
