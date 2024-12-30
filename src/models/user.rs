@@ -236,9 +236,9 @@ impl User {
     return Ok(());
   }
 
-  /// ## User::has_permission
+  /// ## User::login
   /// 
-  /// Check if a user has a specified permission
+  /// Logs in the user with specified session_status, returning the token of created login session
   /// 
   /// Errors:
   /// + When the user do not exist
@@ -284,7 +284,7 @@ impl User {
   /// 
   /// Check if a user has a specified permission
   /// 
-  pub async fn has_permissions(
+  pub async fn has_permission(
     self: &Self,
     conn: &mut PgConnection,
     permission_name: String
