@@ -1,11 +1,30 @@
-use std::{fmt::Debug,time::{self,UNIX_EPOCH}};
+use std::{
+  fmt::Debug,
+  time::{
+    self,
+    UNIX_EPOCH
+  }
+};
 use crypto::{
   digest::Digest,
   sha3::Sha3
 };
-use serde::{Deserialize, Serialize};
-use sqlx::{query, query_as, FromRow, PgConnection};
-use crate::util::string::json_value_to_pretty_string;
+use serde::{
+  Deserialize,
+  Serialize
+};
+use sqlx::{
+  query,
+  query_as,
+  FromRow,PgConnection
+};
+use crate::{
+  models::user::{
+    User,
+    UserRetrieveError
+  },
+  util::string::json_value_to_pretty_string
+};
 
 #[derive(Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum LoginSessionStatus {
@@ -115,7 +134,7 @@ impl LoginSession {
   /// 
   pub async fn retrieve(
     conn: &mut PgConnection,
-    token: String
+    token: &String
   ) -> Result<Self, LoginSessionRetrieveError> {
     let sql = "
       SELECT 
@@ -236,5 +255,47 @@ impl LoginSession {
       .await;
     
     return Ok(());
+  }
+
+
+  /// LoginSession::get_user
+  ///
+  /// Retrieve a user associated with provided session token
+  ///
+  /// Errors:
+  /// + When a session with specified token do not exist
+  /// + When session with provided token is not commited
+  ///
+  pub async fn get_user(
+    conn: &mut PgConnection,
+    token: &String
+  ) -> Result<User, UserRetrieveError> {
+    let sql = "
+    SELECT
+      u.login,
+      u.password_hash,
+      u.details
+    FROM
+      users
+    INNER JOIN
+      login_sessions ls
+    ON
+      u.login = ls.user_login
+    WHERE
+      ls.token = $1
+      AND
+      ls.status = 'Commited';
+    ";
+    let result = query_as(&sql)
+      .bind(&token)
+      .fetch_one(&mut *conn)
+      .await;
+
+    let user = match result {
+      Ok(result) => result,
+      Err(_) => return Err(UserRetrieveError::NotFound)
+    };
+
+    return Ok(user);
   }
 }
