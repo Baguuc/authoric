@@ -258,7 +258,7 @@ impl LoginSession {
   }
 
 
-  /// LoginSession::get_user
+  /// ## LoginSession::get_user
   ///
   /// Retrieve a user associated with provided session token
   ///
@@ -297,5 +297,30 @@ impl LoginSession {
     };
 
     return Ok(user);
+  }
+
+  /// ## LoginSession::has_permission
+  ///
+  /// Check if the user associated with provided token 
+  /// has provided permission
+  pub async fn has_permission(
+    conn: &mut PgConnection,
+    token: &String,
+    permission_name: &str
+  ) -> bool {
+    let user = match Self::get_user(
+      conn,
+      &token
+    ).await {
+      Ok(user) => user,
+      Err(_) => return false
+    };
+
+    return user
+      .has_permission(
+        conn,
+        permission_name.to_string()
+      )
+      .await;
   }
 }
