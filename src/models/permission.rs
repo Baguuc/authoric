@@ -197,7 +197,7 @@ impl PermissionEvent {
   pub async fn delete(
     self: &Self,
     conn: &mut PgConnection,
-    name: String
+    name: &String
   ) {
     let data = serde_json::to_value(&name).unwrap();
 

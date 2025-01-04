@@ -16,7 +16,8 @@ use crate::{
   models::{
     permission::{
       Permission,
-      PermissionInsertError
+      PermissionInsertError,
+      PermissionDeleteError
     },
     LoginSession,
     Order
@@ -156,6 +157,83 @@ async fn insert_permission(
       conn,
       name,
       description
+    )
+    .await;
+  }
+
+  return Ok(());
+}
+
+
+#[derive(Deserialize)]
+struct DeletePermissionQueryData {
+  session_token: String,
+  name: String,
+  auto_commit: Option<bool>
+}
+
+#[delete("/permissions")]
+pub async fn delete_permission(
+  query: Query<DeletePermissionQueryData>,
+  data: Data<CauthConfig>
+) -> impl Responder {
+  // these will never error
+  let mut db_conn = data.db_conn
+    .acquire()
+    .await
+    .unwrap();
+
+  let auto_commit = query
+    .auto_commit
+    .unwrap_or(true);
+
+  let permitted = LoginSession::has_permission(
+    &mut db_conn,
+    &query.session_token,
+    "permissions:delete"
+  )
+  .await;
+
+  if !permitted {
+    return ServerResponse::new(
+      StatusCode::UNAUTHORIZED,
+      None
+    );
+  }
+
+  if let Err(_) = del_permission(
+    &mut db_conn,
+    &query.name,
+    auto_commit
+  ).await {
+    return ServerResponse::new(
+      StatusCode::BAD_REQUEST,
+      None
+    );
+  }
+
+  return ServerResponse::new(
+    StatusCode::OK,
+    None
+  );
+}
+
+
+async fn del_permission(
+  conn: &mut PgConnection, 
+  name: &String,
+  auto_commit: bool
+) -> Result<(), PermissionDeleteError> {
+  if auto_commit {
+    Permission::delete(
+      conn,
+      name
+    )
+    .await?;
+  } else {
+    Permission::event().delete(
+      conn,
+      name
     )
     .await;
   }
