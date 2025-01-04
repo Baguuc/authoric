@@ -12,6 +12,7 @@ pub async fn run_server(port: u16) -> std::io::Result<()> {
   HttpServer::new(|| {
     App::new()
       .service(routes::permissions::get_permissions)
+      .service(routes::permissions::post_permission)
   })
   .bind(("127.0.0.1", port))?
   .run()

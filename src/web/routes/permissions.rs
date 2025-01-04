@@ -1,17 +1,23 @@
 use actix_web::{
-  Responder,
-  get,
+  delete, 
+  get, 
+  http::StatusCode, 
+  post, 
   web::{
-    Query,
-    Data
-  },
-  http::StatusCode
+    Data, 
+    Json,
+    Query
+  }, Responder
 };
 use serde::Deserialize;
 use serde_json::json;
+use sqlx::PgConnection;
 use crate::{
   models::{
-    Permission,
+    permission::{
+      Permission,
+      PermissionInsertError
+    },
     LoginSession,
     Order
   },
@@ -27,7 +33,7 @@ struct GetPermissionsQueryData {
 }
 
 #[get("/permissions")]
-async fn get_permissions(
+pub async fn get_permissions(
   query: Query<GetPermissionsQueryData>,
   data: Data<CauthConfig>
 ) -> impl Responder {
@@ -69,4 +75,90 @@ async fn get_permissions(
     StatusCode::OK,
     Some(json!(result))
   );
+}
+
+#[derive(Deserialize)]
+struct PostPermissionQueryData {
+  session_token: String,
+  auto_commit: Option<bool>
+}
+
+#[derive(Deserialize)]
+struct PostPermissionJsonData {
+  name: String,
+  description: String
+}
+
+#[post("/permissions")]
+pub async fn post_permission(
+  query: Query<PostPermissionQueryData>,
+  json: Json<PostPermissionJsonData>,
+  data: Data<CauthConfig>
+) -> impl Responder {
+  // these will never error
+  let mut db_conn = data.db_conn
+    .acquire()
+    .await
+    .unwrap();
+
+  let auto_commit = query
+    .auto_commit
+    .unwrap_or(true);
+
+  let permitted = LoginSession::has_permission(
+    &mut db_conn,
+    &query.session_token,
+    "permissions:post"
+  )
+  .await;
+
+  if !permitted {
+    return ServerResponse::new(
+      StatusCode::UNAUTHORIZED,
+      None
+    );
+  }
+
+  if let Err(_) = insert_permission(
+    &mut db_conn,
+    &json.name,
+    &json.description,
+    auto_commit
+  ).await {
+    return ServerResponse::new(
+      StatusCode::BAD_REQUEST,
+      None
+    );
+  }
+
+  return ServerResponse::new(
+    StatusCode::OK,
+    None
+  );
+}
+
+
+async fn insert_permission(
+  conn: &mut PgConnection, 
+  name: &String, 
+  description: &String,
+  auto_commit: bool
+) -> Result<(), PermissionInsertError> {
+  if auto_commit {
+    Permission::insert(
+      conn,
+      name,
+      description
+    )
+    .await?;
+  } else {
+    Permission::event().insert(
+      conn,
+      name,
+      description
+    )
+    .await;
+  }
+
+  return Ok(());
 }

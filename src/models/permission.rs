@@ -166,7 +166,7 @@ impl Permission {
 }
 
 
-struct PermissionEvent;
+pub struct PermissionEvent;
 
 
 impl PermissionEvent {
@@ -175,13 +175,14 @@ impl PermissionEvent {
   /// Insert a PermissionCreate event into database
   ///
   pub async fn insert(
+    self: &Self,
     conn: &mut PgConnection,
-    name: String,
-    description: String
+    name: &String,
+    description: &String
   ) {
     let data = Permission {
-      name,
-      description
+      name: name.to_string(),
+      description: description.to_string()
     };
     let data = serde_json::to_value(&data).unwrap();
 
@@ -194,6 +195,7 @@ impl PermissionEvent {
   /// Insert a PermissionDelete event into database
   ///
   pub async fn delete(
+    self: &Self,
     conn: &mut PgConnection,
     name: String
   ) {
