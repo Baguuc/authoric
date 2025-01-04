@@ -309,7 +309,7 @@ impl Group {
   }
 }
 
-struct GroupEvent;
+pub struct GroupEvent;
 
 impl GroupEvent {
   /// ## GroupEvent::insert

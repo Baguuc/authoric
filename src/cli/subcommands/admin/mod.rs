@@ -91,7 +91,7 @@ impl AdminCreateCommand {
       }
     }
 
-    match Group::insert(&mut executor, name, description, permissions).await {
+    match Group::insert(&mut executor, &name, &description, &permissions).await {
       Ok(_) => (),
       Err(_) => println!("{}", "This group already exist".red())
     };
