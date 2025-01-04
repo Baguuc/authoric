@@ -8,10 +8,12 @@ use sqlx::PgPool;
 #[derive(Serialize, Deserialize)]
 pub struct CauthConfigRaw {
   database_url: String,
+  port: u16
 }
 
 pub struct CauthConfig {
   pub db_conn: PgPool,
+  pub port: u16
 }
 
 #[derive(Debug)]
@@ -55,7 +57,8 @@ impl CauthConfig {
     };
 
     let config = CauthConfig {
-      db_conn
+      db_conn,
+      port: config_raw.port
     };
     
     return Ok(config);
@@ -136,6 +139,9 @@ impl CauthConfig {
       let _ = as_map.insert("database_url".into(), serde_yml::to_value("Your database url..").unwrap());
     }
 
+    if !as_map.contains_key("port") {
+      let _ = as_map.insert("port".into(), serde_yml::to_value("The port you want the service to be running on..").unwrap());
+    }
     let as_string = serde_yml::to_string(&as_map).unwrap();
     let _ = file.write(as_string.as_bytes());
   }

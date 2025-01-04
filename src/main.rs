@@ -5,6 +5,7 @@ mod cli;
 mod config;
 mod models;
 mod util;
+mod web;
 
 #[tokio::main]
 async fn main() {
