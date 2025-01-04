@@ -4,9 +4,7 @@ use actix_web::{
   http::StatusCode, 
   post, 
   web::{
-    Data, 
-    Json,
-    Query
+    Data, Json, Path, Query
   }, Responder
 };
 use serde::Deserialize;
@@ -172,14 +170,14 @@ async fn insert_group(
 #[derive(Deserialize)]
 struct DeleteGroupQueryData {
   session_token: String,
-  name: String,
   auto_commit: Option<bool>
 }
 
-#[delete("/groups")]
+#[delete("/groups/{name}")]
 pub async fn delete_group(
   query: Query<DeleteGroupQueryData>,
-  data: Data<CauthConfig>
+  data: Data<CauthConfig>,
+  name: Path<String>
 ) -> impl Responder {
   // these will never error
   let mut db_conn = data.db_conn
@@ -207,7 +205,7 @@ pub async fn delete_group(
 
   if let Err(_) = del_group(
     &mut db_conn,
-    &query.name,
+    &name,
     auto_commit
   ).await {
     return ServerResponse::new(

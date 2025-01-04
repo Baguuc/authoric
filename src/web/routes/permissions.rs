@@ -4,9 +4,7 @@ use actix_web::{
   http::StatusCode, 
   post, 
   web::{
-    Data, 
-    Json,
-    Query
+    Data, Json, Path, Query
   }, Responder
 };
 use serde::Deserialize;
@@ -168,14 +166,14 @@ async fn insert_permission(
 #[derive(Deserialize)]
 struct DeletePermissionQueryData {
   session_token: String,
-  name: String,
   auto_commit: Option<bool>
 }
 
 #[delete("/permissions")]
 pub async fn delete_permission(
   query: Query<DeletePermissionQueryData>,
-  data: Data<CauthConfig>
+  data: Data<CauthConfig>,
+  name: Path<String>
 ) -> impl Responder {
   // these will never error
   let mut db_conn = data.db_conn
@@ -203,7 +201,7 @@ pub async fn delete_permission(
 
   if let Err(_) = del_permission(
     &mut db_conn,
-    &query.name,
+    &name,
     auto_commit
   ).await {
     return ServerResponse::new(
