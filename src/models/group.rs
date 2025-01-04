@@ -24,6 +24,7 @@ impl ToString for Group {
   }
 }
 
+#[derive(Debug)]
 pub enum GroupListError {}
 
 impl ToString for GroupListError {
@@ -184,9 +185,9 @@ impl Group {
   /// 
   pub async fn insert(
     conn: &mut PgConnection,
-    name: String,
-    description: String,
-    permissions: Vec<String>
+    name: &String,
+    description: &String,
+    permissions: &Vec<String>
   ) -> Result<(), GroupInsertError> {
     let sql = "INSERT INTO groups (name, description) VALUES ($1, $2);".to_string();
     let q = query(&sql).bind(&name).bind(&description);
@@ -196,7 +197,7 @@ impl Group {
       Err(_) => return Err(GroupInsertError::NameError)
     };
 
-    for permission_name in &permissions {
+    for permission_name in permissions {
       match Self::grant_permission(&mut *conn, &name, permission_name).await {
         Ok(_) => (),
         Err(_) => return Err(GroupInsertError::NameError)
@@ -213,7 +214,7 @@ impl Group {
   /// 
   pub async fn delete(
     conn: &mut PgConnection,
-    name: String
+    name: &String
   ) -> Result<(), GroupDeleteError> {
     let sql = "DELETE FROM groups_permissions WHERE group_name = $1;";
     let q = query(&sql).bind(&name);
@@ -316,15 +317,16 @@ impl GroupEvent {
   /// Insert a GroupCreate event into database
   ///
   pub async fn insert(
+    self: &Self,
     conn: &mut PgConnection,
-    name: String,
-    description: String,
-    permissions: Vec<String>
+    name: &String,
+    description: &String,
+    permissions: &Vec<String>
   ) {
     let data = Group {
-      name,
-      description,
-      permissions
+      name: name.to_string(),
+      description: description.to_string(),
+      permissions: permissions.to_vec()
     };
     let data = serde_json::to_value(&data).unwrap();
 
@@ -337,8 +339,9 @@ impl GroupEvent {
   /// Insert a GroupDelete event into database
   ///
   pub async fn delete(
+    self: &Self,
     conn: &mut PgConnection,
-    name: String
+    name: &String
   ) {
     let data = serde_json::to_value(&name).unwrap();
 

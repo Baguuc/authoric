@@ -262,7 +262,7 @@ impl Event {
   async fn handle_create_group_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
     let group = serde_json::from_value::<Group>(self.data).unwrap();
     
-    match Group::insert(conn, group.name, group.description, group.permissions).await {
+    match Group::insert(conn, &group.name, &group.description, &group.permissions).await {
       Ok(_) => (),
       Err(err) => return Err(err.to_string().into()) 
     };
@@ -273,7 +273,7 @@ impl Event {
   async fn handle_delete_group_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
     let group_name = serde_json::from_value::<String>(self.data).unwrap();
     
-    match Group::delete(conn, group_name).await {
+    match Group::delete(conn, &group_name).await {
       Ok(_) => (),
       Err(err) => return Err(err.to_string().into()) 
     };
