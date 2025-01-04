@@ -168,3 +168,78 @@ async fn insert_group(
 
   return Ok(());
 }
+
+#[derive(Deserialize)]
+struct DeleteGroupQueryData {
+  session_token: String,
+  name: String,
+  auto_commit: Option<bool>
+}
+
+#[delete("/groups")]
+pub async fn delete_group(
+  query: Query<DeleteGroupQueryData>,
+  data: Data<CauthConfig>
+) -> impl Responder {
+  // these will never error
+  let mut db_conn = data.db_conn
+    .acquire()
+    .await
+    .unwrap();
+
+  let auto_commit = query
+    .auto_commit
+    .unwrap_or(true);
+
+  let permitted = LoginSession::has_permission(
+    &mut db_conn,
+    &query.session_token,
+    "groups:delete"
+  )
+  .await;
+
+  if !permitted {
+    return ServerResponse::new(
+      StatusCode::UNAUTHORIZED,
+      None
+    );
+  }
+
+  if let Err(_) = del_group(
+    &mut db_conn,
+    &query.name,
+    auto_commit
+  ).await {
+    return ServerResponse::new(
+      StatusCode::BAD_REQUEST,
+      None
+    );
+  }
+
+  return ServerResponse::new(
+    StatusCode::OK,
+    None
+  );
+}
+
+async fn del_group(
+  conn: &mut PgConnection, 
+  name: &String,
+  auto_commit: bool
+) -> Result<(), GroupDeleteError> {
+  if auto_commit {
+    Group::delete(
+      conn,
+      name
+    )
+    .await?;
+  } else {
+    Group::event().delete(
+      conn,
+      name
+    )
+    .await;
+  }
+
+  return Ok(());
+}
