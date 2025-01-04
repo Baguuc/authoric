@@ -7,9 +7,7 @@ use serde::Deserialize;
 use serde_json::json;
 use crate::{
   config::CauthConfig, models::{
-    event::EventRetrieveError, permission::{
-      Permission, PermissionDeleteError, PermissionInsertError
-    }, Event, LoginSession, Order
+    event::EventRetrieveError, Event, LoginSession
   }, web::ServerResponse
 };
 
@@ -63,6 +61,55 @@ pub async fn commit_event(
       }))
     )
   };
+
+  return ServerResponse::new(
+    StatusCode::OK,
+    None
+  );
+}
+
+#[derive(Deserialize)]
+struct CancelEventQueryData {
+  session_token: String
+}
+
+#[delete("/events/{id}")]
+pub async fn cancel_event(
+  query: Query<CancelEventQueryData>,
+  data: Data<CauthConfig>,
+  id: Path<i64>
+) -> impl Responder {
+  // these will never error
+  let mut db_conn = data.db_conn
+    .acquire()
+    .await
+    .unwrap();
+
+  let permitted = LoginSession::has_permission(
+    &mut db_conn,
+    &query.session_token,
+    format!("events:use:{}", id).as_str()
+  )
+  .await;
+
+  if !permitted {
+    return ServerResponse::new(
+      StatusCode::UNAUTHORIZED,
+      None
+    );
+  }
+
+  let event = match Event::retrieve(&mut db_conn, *id).await {
+    Ok(event) => event,
+    Err(err) => match err {
+      EventRetrieveError::NotFound => return ServerResponse::new(
+        StatusCode::BAD_REQUEST, 
+        None
+      )
+    }
+  };
+
+  let _ = event.delete(&mut db_conn).await;
 
   return ServerResponse::new(
     StatusCode::OK,
