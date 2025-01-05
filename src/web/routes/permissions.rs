@@ -122,7 +122,8 @@ pub async fn post_permission(
     &mut db_conn,
     &json.name,
     &json.description,
-    auto_commit
+    auto_commit,
+    &query.session_token
   ).await {
     return ServerResponse::new(
       StatusCode::BAD_REQUEST,
@@ -141,7 +142,8 @@ async fn insert_permission(
   conn: &mut PgConnection, 
   name: &String, 
   description: &String,
-  auto_commit: bool
+  auto_commit: bool,
+  creator_token: &String
 ) -> Result<(), PermissionInsertError> {
   if auto_commit {
     Permission::insert(
@@ -154,7 +156,8 @@ async fn insert_permission(
     Permission::event().insert(
       conn,
       name,
-      description
+      description,
+      &creator_token
     )
     .await;
   }
@@ -202,7 +205,8 @@ pub async fn delete_permission(
   if let Err(_) = del_permission(
     &mut db_conn,
     &name,
-    auto_commit
+    auto_commit,
+    &query.session_token
   ).await {
     return ServerResponse::new(
       StatusCode::BAD_REQUEST,
@@ -220,7 +224,8 @@ pub async fn delete_permission(
 async fn del_permission(
   conn: &mut PgConnection, 
   name: &String,
-  auto_commit: bool
+  auto_commit: bool,
+  creator_token: &String
 ) -> Result<(), PermissionDeleteError> {
   if auto_commit {
     Permission::delete(
@@ -231,7 +236,8 @@ async fn del_permission(
   } else {
     Permission::event().delete(
       conn,
-      name
+      name,
+      creator_token
     )
     .await;
   }

@@ -405,7 +405,8 @@ impl UserEvent {
     conn: &mut PgConnection,
     login: String,
     password: String,
-    details: serde_json::Value
+    details: serde_json::Value,
+    creator_token: &String
   ) -> Result<(), UserInsertError> {
     let password_hash = match hash_password(password) {
       Ok(hash) => hash,
@@ -417,7 +418,12 @@ impl UserEvent {
       details
     };
     let data = serde_json::to_value(&data).unwrap();
-    let _ = Event::insert(conn, EventType::UserRegister, data).await;
+    let _ = Event::insert(
+      conn,
+      EventType::UserRegister,
+      data,
+      creator_token
+    ).await;
   
     return Ok(());
   }
@@ -433,11 +439,17 @@ impl UserEvent {
   pub async fn login(
     conn: &mut PgConnection,
     login: String,
-    password: String
+    password: String,
+    creator_token: &String
   ) -> Result<(), UserLoginError> {
     let session_id = User::login(conn, login, password, LoginSessionStatus::OnHold).await?;
     let data = serde_json::to_value(&session_id).unwrap();
-    let _ = Event::insert(conn, EventType::UserLogin, data).await;
+    let _ = Event::insert(
+      conn,
+      EventType::UserLogin,
+      data,
+      creator_token
+    ).await;
     
     return Ok(());
   }
@@ -450,10 +462,16 @@ impl UserEvent {
   ///
   pub async fn delete(
     conn: &mut PgConnection,
-    login: String
+    login: String,
+    creator_token: &String
   ) {
     let data = serde_json::to_value(&login).unwrap();
-    let _ = Event::insert(conn, EventType::UserDelete, data).await;
+    let _ = Event::insert(
+      conn,
+      EventType::UserDelete,
+      data,
+      creator_token
+    ).await;
   }
 }
 

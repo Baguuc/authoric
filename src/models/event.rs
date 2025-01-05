@@ -6,7 +6,7 @@ use sqlx::{prelude::FromRow, query, query_as, PgConnection};
 
 use crate::util::string::json_value_to_pretty_string;
 
-use super::{group::Group, login_session::{LoginSession, LoginSessionStatus}, permission::Permission, user::User, Order};
+use super::{grant_event_permission, group::Group, login_session::{LoginSession, LoginSessionStatus}, permission::Permission, user::User, Order};
 
 #[derive(FromRow, Serialize, Deserialize)]
 pub struct EventRaw {
@@ -166,23 +166,26 @@ impl Event {
 
   /// ## Event::insert
   /// 
-  /// Inserts a event with provided data into the database <br>
+  /// Inserts a event with provided data into the database and uses grant_event_permission function on it <br>
   /// 
-  pub async fn insert(conn: &mut PgConnection, _type: EventType, data: Value) -> Result<Self, EventInsertError> {
+  pub async fn insert(conn: &mut PgConnection, _type: EventType, data: Value, creator_token: &String) -> Result<(), EventInsertError> {
     let sql = "INSERT INTO events (_type, data) VALUES ($1, $2) RETURNING id;";
     let result = query_as(sql)
       .bind(_type.to_string())
       .bind(data)
       .fetch_one(&mut *conn)
       .await;
+    let returned_row: (i64,) = result.unwrap();
+    let event_id = returned_row.0;
 
-    let returned_id: (i64,) = result.unwrap();
-    let returned_id = returned_id.0;
-    let event = Self::retrieve(conn, returned_id)
-      .await
-      .unwrap();
+    grant_event_permission(
+      conn,
+      event_id,
+      creator_token
+    )
+    .await;
     
-    return Ok(event);
+    return Ok(());
   }
 
   /// ## Event::delete

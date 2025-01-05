@@ -321,7 +321,8 @@ impl GroupEvent {
     conn: &mut PgConnection,
     name: &String,
     description: &String,
-    permissions: &Vec<String>
+    permissions: &Vec<String>,
+    creator_token: &String
   ) {
     let data = Group {
       name: name.to_string(),
@@ -330,7 +331,12 @@ impl GroupEvent {
     };
     let data = serde_json::to_value(&data).unwrap();
 
-    let _ = Event::insert(conn, EventType::GroupCreate, data).await;
+    let _ = Event::insert(
+      conn,
+      EventType::GroupCreate,
+      data,
+      creator_token
+    ).await;
   }
 
 
@@ -341,10 +347,16 @@ impl GroupEvent {
   pub async fn delete(
     self: &Self,
     conn: &mut PgConnection,
-    name: &String
+    name: &String,
+    creator_token: &String
   ) {
     let data = serde_json::to_value(&name).unwrap();
 
-    let _ = Event::insert(conn, EventType::GroupDelete, data).await;
+    let _ = Event::insert(
+      conn,
+      EventType::GroupDelete,
+      data,
+      creator_token
+    ).await;
   }
 }

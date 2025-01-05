@@ -124,7 +124,8 @@ pub async fn post_group(
     &json.name,
     &json.description,
     &json.permissions,
-    auto_commit
+    auto_commit,
+    &query.session_token
   ).await {
     return ServerResponse::new(
       StatusCode::BAD_REQUEST,
@@ -144,7 +145,8 @@ async fn insert_group(
   name: &String, 
   description: &String,
   permissions: &Vec<String>,
-  auto_commit: bool
+  auto_commit: bool,
+  creator_token: &String
 ) -> Result<(), GroupInsertError> {
   if auto_commit {
     Group::insert(
@@ -159,7 +161,8 @@ async fn insert_group(
       conn,
       name,
       description,
-      permissions
+      permissions,
+      creator_token
     )
     .await;
   }
@@ -206,7 +209,8 @@ pub async fn delete_group(
   if let Err(_) = del_group(
     &mut db_conn,
     &name,
-    auto_commit
+    auto_commit,
+    &query.session_token
   ).await {
     return ServerResponse::new(
       StatusCode::BAD_REQUEST,
@@ -223,7 +227,8 @@ pub async fn delete_group(
 async fn del_group(
   conn: &mut PgConnection, 
   name: &String,
-  auto_commit: bool
+  auto_commit: bool,
+  creator_token: &String
 ) -> Result<(), GroupDeleteError> {
   if auto_commit {
     Group::delete(
@@ -234,7 +239,8 @@ async fn del_group(
   } else {
     Group::event().delete(
       conn,
-      name
+      name,
+      creator_token
     )
     .await;
   }

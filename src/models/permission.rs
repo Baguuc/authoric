@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, query, query_as, PgConnection};
 use crate::{models::{Order, event::{Event, EventType}}, util::string::json_value_to_pretty_string};
 
+use super::{grant_event_permission, Group, LoginSession};
+
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Permission {
   pub name: String,
@@ -173,12 +175,14 @@ impl PermissionEvent {
   /// ## PermissionEvent::insert
   ///
   /// Insert a PermissionCreate event into database
+  /// Granting the creating user and root permission to use it
   ///
   pub async fn insert(
     self: &Self,
     conn: &mut PgConnection,
     name: &String,
-    description: &String
+    description: &String,
+    creator_token: &String
   ) {
     let data = Permission {
       name: name.to_string(),
@@ -186,7 +190,13 @@ impl PermissionEvent {
     };
     let data = serde_json::to_value(&data).unwrap();
 
-    let _ = Event::insert(conn, EventType::PermissionCreate, data).await;
+    let event_id = Event::insert(
+      conn,
+      EventType::PermissionCreate,
+      data,
+      creator_token
+    )
+    .await;
   }
 
 
@@ -197,10 +207,16 @@ impl PermissionEvent {
   pub async fn delete(
     self: &Self,
     conn: &mut PgConnection,
-    name: &String
+    name: &String,
+    creator_token: &String
   ) {
     let data = serde_json::to_value(&name).unwrap();
 
-    let _ = Event::insert(conn, EventType::PermissionDelete, data).await;
+    let _ = Event::insert(
+      conn,
+      EventType::PermissionDelete,
+      data,
+      creator_token
+    ).await;
   }
 }

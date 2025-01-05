@@ -82,6 +82,7 @@ impl ToString for LoginSession {
   } 
 }
 
+#[derive(Debug)]
 pub enum LoginSessionRetrieveError {
   /// Returned when the session is not found
   NotFound
