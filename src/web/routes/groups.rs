@@ -45,7 +45,7 @@ pub async fn get_groups(
   let permitted = LoginSession::has_permission(
     &mut db_conn,
     &query.session_token,
-    "groups:get"
+    "cauth:groups:get"
   )
   .await;
 
@@ -108,7 +108,7 @@ pub async fn post_group(
   let permitted = LoginSession::has_permission(
     &mut db_conn,
     &query.session_token,
-    "groups:post"
+    "cauth:groups:post"
   )
   .await;
 
@@ -192,7 +192,7 @@ pub async fn delete_group(
   let permitted = LoginSession::has_permission(
     &mut db_conn,
     &query.session_token,
-    "groups:delete"
+    "cauth:groups:delete"
   )
   .await;
 

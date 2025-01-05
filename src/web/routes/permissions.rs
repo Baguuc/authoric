@@ -45,7 +45,7 @@ pub async fn get_permissions(
   let permitted = LoginSession::has_permission(
     &mut db_conn,
     &query.session_token,
-    "permissions:get"
+    "cauth:permissions:get"
   )
   .await;
 
@@ -107,7 +107,7 @@ pub async fn post_permission(
   let permitted = LoginSession::has_permission(
     &mut db_conn,
     &query.session_token,
-    "permissions:post"
+    "cauth:permissions:post"
   )
   .await;
 
@@ -188,7 +188,7 @@ pub async fn delete_permission(
   let permitted = LoginSession::has_permission(
     &mut db_conn,
     &query.session_token,
-    "permissions:delete"
+    "cauth:permissions:delete"
   )
   .await;
 
