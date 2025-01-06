@@ -118,23 +118,13 @@ pub async fn post_permission(
     );
   }
 
-  if let Err(_) = insert_permission(
+  return insert_permission(
     &mut db_conn,
     &json.name,
     &json.description,
     auto_commit,
     &query.session_token
-  ).await {
-    return ServerResponse::new(
-      StatusCode::BAD_REQUEST,
-      None
-    );
-  }
-
-  return ServerResponse::new(
-    StatusCode::OK,
-    None
-  );
+  ).await;
 }
 
 
@@ -144,25 +134,47 @@ async fn insert_permission(
   description: &String,
   auto_commit: bool,
   creator_token: &String
-) -> Result<(), PermissionInsertError> {
+) -> ServerResponse {
   if auto_commit {
-    Permission::insert(
+    let result = Permission::insert(
       conn,
       name,
       description
     )
-    .await?;
+    .await;
+
+    match result {
+      Ok(_) => return ServerResponse::new(
+        StatusCode::OK,
+        None
+      ),
+      Err(_) => return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        None
+      )
+    }
   } else {
-    Permission::event().insert(
+    let result = Permission::event().insert(
       conn,
       name,
       description,
       &creator_token
     )
     .await;
-  }
 
-  return Ok(());
+    match result {
+      Ok(event_id) => return ServerResponse::new(
+        StatusCode::OK,
+        Some(json!({
+          "event_id": event_id
+        }))
+      ),
+      Err(_) =>  return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        None
+      ),
+    }
+  }
 }
 
 
@@ -202,22 +214,12 @@ pub async fn delete_permission(
     );
   }
 
-  if let Err(_) = del_permission(
+  return del_permission(
     &mut db_conn,
     &name,
     auto_commit,
     &query.session_token
-  ).await {
-    return ServerResponse::new(
-      StatusCode::BAD_REQUEST,
-      None
-    );
-  }
-
-  return ServerResponse::new(
-    StatusCode::OK,
-    None
-  );
+  ).await
 }
 
 
@@ -226,21 +228,43 @@ async fn del_permission(
   name: &String,
   auto_commit: bool,
   creator_token: &String
-) -> Result<(), PermissionDeleteError> {
-  if auto_commit {
-    Permission::delete(
+) -> ServerResponse {
+   if auto_commit {
+    let result = Permission::delete(
       conn,
       name
     )
-    .await?;
+    .await;
+
+    match result {
+      Ok(_) => return ServerResponse::new(
+        StatusCode::OK,
+        None
+      ),
+      Err(_) => return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        None
+      )
+    }
   } else {
-    Permission::event().delete(
+    let result = Permission::event().delete(
       conn,
       name,
-      creator_token
+      &creator_token
     )
     .await;
-  }
 
-  return Ok(());
+    match result {
+      Ok(event_id) => return ServerResponse::new(
+        StatusCode::OK,
+        Some(json!({
+          "event_id": event_id
+        }))
+      ),
+      Err(_) =>  return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        None
+      ),
+    }
+  }
 }

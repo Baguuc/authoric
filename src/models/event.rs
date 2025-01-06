@@ -168,7 +168,7 @@ impl Event {
   /// 
   /// Inserts a event with provided data into the database and uses grant_event_permission function on it <br>
   /// 
-  pub async fn insert(conn: &mut PgConnection, _type: EventType, data: Value, creator_token: &String) -> Result<(), EventInsertError> {
+  pub async fn insert(conn: &mut PgConnection, _type: EventType, data: Value, creator_token: &String) -> Result<i64, EventInsertError> {
     let sql = "INSERT INTO events (_type, data) VALUES ($1, $2) RETURNING id;";
     let result = query_as(sql)
       .bind(_type.to_string())
@@ -185,7 +185,7 @@ impl Event {
     )
     .await;
     
-    return Ok(());
+    return Ok(event_id);
   }
 
   /// ## Event::delete

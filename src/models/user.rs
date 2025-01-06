@@ -6,6 +6,8 @@ use sqlx::{prelude::FromRow, query, query_as, PgConnection};
 use crate::util::string::json_value_to_pretty_string;
 use crate::models::{event::{Event, EventType}, login_session::{LoginSession, LoginSessionStatus, LoginSessionInsertError}, Order};
 
+use super::event::EventInsertError;
+
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct User {
   pub login: String,
@@ -392,6 +394,16 @@ impl User {
 
 pub struct UserEvent;
 
+pub enum UserLoginEventInsertError {
+  /// Returned when the user is not found
+  NotFound,
+  /// Returned when the credentials are invalid
+  InvalidCredentials,
+  /// Returned when the token hash cannot be created
+  CannotHash(String),
+  /// Returned when the event insertion throws an error
+  EventInsertError(EventInsertError)
+}
 
 impl UserEvent {
   /// ## UserEvent::register
@@ -429,7 +441,6 @@ impl UserEvent {
     return Ok(());
   }
 
-
   /// ## UserEvent::login
   ///
   /// Insert a UserLogin event into database
@@ -442,22 +453,36 @@ impl UserEvent {
     conn: &mut PgConnection,
     login: &String,
     password: &String
-  ) -> Result<(), UserLoginError> {
-    let session_token = User::login(
+  ) -> Result<i64, UserLoginEventInsertError> {
+    let result = User::login(
       conn,
       &login,
       &password,
       LoginSessionStatus::OnHold
-    ).await?;
+    ).await;
+
+    let session_token = match result {
+      Ok(session_token) => session_token,
+      Err(err) => match err {
+        UserLoginError::CannotHash(err) => return Err(UserLoginEventInsertError::CannotHash(err)),
+        UserLoginError::InvalidCredentials => return Err(UserLoginEventInsertError::InvalidCredentials),
+        UserLoginError::NotFound => return Err(UserLoginEventInsertError::NotFound)
+      }
+    };
+
     let data = serde_json::to_value(&session_token).unwrap();
-    let _ = Event::insert(
+    let result = Event::insert(
       conn,
       EventType::UserLogin,
       data,
       &session_token
-    ).await;
-    
-    return Ok(());
+    )
+    .await;
+
+    match result {
+      Ok(event_id) => return Ok(event_id),
+      Err(err) => return Err(UserLoginEventInsertError::EventInsertError(err))
+    }
   }
    
 
@@ -471,9 +496,9 @@ impl UserEvent {
     conn: &mut PgConnection,
     login: String,
     creator_token: &String
-  ) {
+  ) -> Result<i64, EventInsertError> {
     let data = serde_json::to_value(&login).unwrap();
-    let _ = Event::insert(
+    return Event::insert(
       conn,
       EventType::UserDelete,
       data,

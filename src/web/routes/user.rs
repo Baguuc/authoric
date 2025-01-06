@@ -35,22 +35,21 @@ pub async fn post_users(
   .await;
 
   match result {
-    Ok(_) => (),
+    Ok(_) => return ServerResponse::new(
+      StatusCode::OK,
+      None
+    ),
     Err(_) => return ServerResponse::new(
       StatusCode::BAD_REQUEST,
       None
     )
   };
-
-  return ServerResponse::new(
-    StatusCode::OK,
-    None
-  );
 }
 
 #[derive(Deserialize)]
 pub struct DeleteGroupQueryData {
-    session_token: String
+    session_token: String,
+    auto_commit: bool
 }
 
 #[delete("/users/{login}")]
@@ -59,11 +58,11 @@ pub async fn delete_users(
     name: Path<String>,
     data: Data<CauthConfig>
 ) -> impl Responder {
-    // these will never error
+  // these will never error
   let mut db_conn = data.db_conn
-  .acquire()
-  .await
-  .unwrap();
+    .acquire()
+    .await
+    .unwrap();
 
   let permitted = LoginSession::has_permission(
     &mut db_conn,
@@ -79,24 +78,44 @@ pub async fn delete_users(
     );
   }
 
-  let result = User::delete(
-    &mut db_conn,
-    (&name).to_string()
-  )
-  .await;
+  if query.auto_commit {
+    let result = User::delete(
+      &mut db_conn,
+      (&name).to_string()
+    )
+    .await;
 
-  match result {
-    Ok(_) => (),
-    Err(_) => return ServerResponse::new(
+    match result {
+      Ok(_) => return ServerResponse::new(
+        StatusCode::OK,
+        None
+      ),
+      Err(_) => return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         None
+      )
+    }
+  } else {
+    let result = User::event().delete(
+      &mut db_conn,
+      (&name).to_string(),
+      &query.session_token
     )
-  };
+    .await;
 
-  return ServerResponse::new(
-    StatusCode::OK,
-    None
-  );
+    match result {
+      Ok(event_id) => return ServerResponse::new(
+        StatusCode::OK,
+        Some(json!({
+          "event_id": event_id
+        }))
+      ),
+      Err(_) => return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        None
+      )
+    }
+  }
 }
 
 #[derive(Deserialize)]
@@ -134,31 +153,37 @@ pub async fn post_user(
     )
     .await;
 
-    let token = match result {
-        Ok(token) => token,
+    match result {
+        Ok(token) => return ServerResponse::new(
+          StatusCode::OK,
+          Some(json!({
+              "token": token
+          }))
+        ),
         Err(_) => return ServerResponse::new(
             StatusCode::BAD_REQUEST,
             None
         )
       };
-    
-      return ServerResponse::new(
-        StatusCode::OK,
-        Some(json!({
-            "token": token
-        }))
-      );
     } else {
-        let _ = User::event().login(
+        let result = User::event().login(
             &mut db_conn, 
             &json.login,
             &json.password
         )
         .await;
 
-        return ServerResponse::new(
+        match result {
+          Ok(event_id) => return ServerResponse::new(
             StatusCode::OK,
+            Some(json!({
+              "event_id": event_id
+            }))
+          ),
+          Err(_) => return ServerResponse::new(
+            StatusCode::BAD_REQUEST,
             None
-        );
+          )
+        }
     }
 }

@@ -119,24 +119,15 @@ pub async fn post_group(
     );
   }
 
-  if let Err(_) = insert_group(
+  return insert_group(
     &mut db_conn,
     &json.name,
     &json.description,
     &json.permissions,
     auto_commit,
     &query.session_token
-  ).await {
-    return ServerResponse::new(
-      StatusCode::BAD_REQUEST,
-      None
-    );
-  }
-
-  return ServerResponse::new(
-    StatusCode::OK,
-    None
-  );
+  )
+  .await;
 }
 
 
@@ -147,17 +138,28 @@ async fn insert_group(
   permissions: &Vec<String>,
   auto_commit: bool,
   creator_token: &String
-) -> Result<(), GroupInsertError> {
+) -> ServerResponse {
   if auto_commit {
-    Group::insert(
+    let result = Group::insert(
       conn,
       name,
       description,
       permissions
     )
-    .await?;
+    .await;
+
+    match result {
+      Ok(_) => return ServerResponse::new(
+        StatusCode::OK,
+        None
+      ),
+      Err(_) => return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        None
+      )
+    }
   } else {
-    Group::event().insert(
+    let result = Group::event().insert(
       conn,
       name,
       description,
@@ -165,9 +167,20 @@ async fn insert_group(
       creator_token
     )
     .await;
-  }
 
-  return Ok(());
+    match result {
+      Ok(event_id) => return ServerResponse::new(
+        StatusCode::OK,
+        Some(json!({
+          "event_id": event_id
+        }))
+      ),
+      Err(_) =>  return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        None
+      ),
+    }
+  }
 }
 
 #[derive(Deserialize)]
@@ -206,22 +219,13 @@ pub async fn delete_group(
     );
   }
 
-  if let Err(_) = del_group(
+  return del_group(
     &mut db_conn,
     &name,
     auto_commit,
     &query.session_token
-  ).await {
-    return ServerResponse::new(
-      StatusCode::BAD_REQUEST,
-      None
-    );
-  }
-
-  return ServerResponse::new(
-    StatusCode::OK,
-    None
-  );
+  )
+  .await
 }
 
 async fn del_group(
@@ -229,21 +233,43 @@ async fn del_group(
   name: &String,
   auto_commit: bool,
   creator_token: &String
-) -> Result<(), GroupDeleteError> {
+) -> ServerResponse {
   if auto_commit {
-    Group::delete(
+    let result = Group::delete(
       conn,
       name
     )
-    .await?;
+    .await;
+
+    match result {
+      Ok(_) => return ServerResponse::new(
+        StatusCode::OK,
+        None
+      ),
+      Err(_) => return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        None
+      )
+    }
   } else {
-    Group::event().delete(
+    let result = Group::event().delete(
       conn,
       name,
       creator_token
     )
     .await;
-  }
 
-  return Ok(());
+    match result {
+      Ok(event_id) => return ServerResponse::new(
+        StatusCode::OK,
+        Some(json!({
+          "event_id": event_id
+        }))
+      ),
+      Err(_) =>  return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        None
+      ),
+    }
+  }
 }

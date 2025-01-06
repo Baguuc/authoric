@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, query, query_as, PgConnection};
 use crate::{models::{Order, event::{Event, EventType}}, util::string::json_value_to_pretty_string};
 
-use super::{Group, LoginSession};
+use super::{event::EventInsertError, Group, LoginSession};
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Permission {
@@ -183,14 +183,14 @@ impl PermissionEvent {
     name: &String,
     description: &String,
     creator_token: &String
-  ) {
+  ) -> Result<i64, EventInsertError> {
     let data = Permission {
       name: name.to_string(),
       description: description.to_string()
     };
     let data = serde_json::to_value(&data).unwrap();
 
-    let event_id = Event::insert(
+    return Event::insert(
       conn,
       EventType::PermissionCreate,
       data,
@@ -210,10 +210,10 @@ impl PermissionEvent {
     conn: &mut PgConnection,
     name: &String,
     creator_token: &String
-  ) {
+  ) -> Result<i64, EventInsertError> {
     let data = serde_json::to_value(&name).unwrap();
 
-    let _ = Event::insert(
+    return Event::insert(
       conn,
       EventType::PermissionDelete,
       data,

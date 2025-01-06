@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query, query_as, FromRow, PgConnection};
 use crate::{models::{Order,event::{Event, EventType}}, util::string::json_value_to_pretty_string};
 
-use super::permission::Permission;
+use super::{event::EventInsertError, permission::Permission};
 
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -324,7 +324,7 @@ impl GroupEvent {
     description: &String,
     permissions: &Vec<String>,
     creator_token: &String
-  ) {
+  ) -> Result<i64, EventInsertError> {
     let data = Group {
       name: name.to_string(),
       description: description.to_string(),
@@ -332,7 +332,7 @@ impl GroupEvent {
     };
     let data = serde_json::to_value(&data).unwrap();
 
-    let _ = Event::insert(
+    return Event::insert(
       conn,
       EventType::GroupCreate,
       data,
@@ -350,10 +350,10 @@ impl GroupEvent {
     conn: &mut PgConnection,
     name: &String,
     creator_token: &String
-  ) {
+  ) -> Result<i64, EventInsertError> {
     let data = serde_json::to_value(&name).unwrap();
 
-    let _ = Event::insert(
+    return Event::insert(
       conn,
       EventType::GroupDelete,
       data,
