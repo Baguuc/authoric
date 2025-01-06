@@ -315,6 +315,7 @@ impl GroupEvent {
   /// ## GroupEvent::insert
   ///
   /// Insert a GroupCreate event into database
+  /// Granting the creating user and root permission to use it
   ///
   pub async fn insert(
     self: &Self,

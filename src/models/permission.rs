@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, query, query_as, PgConnection};
 use crate::{models::{Order, event::{Event, EventType}}, util::string::json_value_to_pretty_string};
 
-use super::{grant_event_permission, Group, LoginSession};
+use super::{Group, LoginSession};
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Permission {
@@ -203,6 +203,7 @@ impl PermissionEvent {
   /// ## PermissionEvent::delete
   ///
   /// Insert a PermissionDelete event into database
+  /// Granting the creating user and root permission to use it
   ///
   pub async fn delete(
     self: &Self,

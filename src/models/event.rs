@@ -6,7 +6,7 @@ use sqlx::{prelude::FromRow, query, query_as, PgConnection};
 
 use crate::util::string::json_value_to_pretty_string;
 
-use super::{grant_event_permission, group::Group, login_session::{LoginSession, LoginSessionStatus}, permission::Permission, user::User, Order};
+use super::{group::Group, login_session::{LoginSession, LoginSessionStatus}, permission::Permission, user::User, Order};
 
 #[derive(FromRow, Serialize, Deserialize)]
 pub struct EventRaw {
@@ -178,7 +178,7 @@ impl Event {
     let returned_row: (i64,) = result.unwrap();
     let event_id = returned_row.0;
 
-    grant_event_permission(
+    Self::grant_event_permission(
       conn,
       event_id,
       creator_token
@@ -239,6 +239,56 @@ impl Event {
 
     return Ok(());
   }
+
+  /// ## grant_event_permission
+  /// 
+  /// Grant the created event permission to creator and root
+  /// 
+  /// Panics:
+  /// + this function assumes that the owner_token is validated and user with provided token exists
+  ///
+  pub async fn grant_event_permission(conn: &mut PgConnection, event_id: i64, owner_token: &String) {
+    let owner = LoginSession::retrieve(
+      conn, 
+      owner_token
+    )
+    .await
+    .unwrap();
+
+    let new_permission_name = format!("cauth:events:use:{}", event_id);
+    
+    let _ = Permission::insert(
+      conn,
+      &new_permission_name,
+      &format!("Allow the user to interact with event {}", event_id)
+    );
+    let new_group_name = format!("{}:events", owner.user_login);
+
+    let result = Group::insert(
+      conn,
+      &new_group_name,
+      &format!("Collection of permissions for {} user.", owner.user_login), 
+      &vec![new_permission_name.clone()]
+    ).await;
+
+    match result {
+      Ok(_) => (),
+      Err(_) => {
+        let _ = Group::grant_permission(
+          conn,
+          &new_group_name,
+          &new_permission_name
+        );
+      }
+    };
+
+    let _ = Group::grant_permission(
+      conn, 
+      &"root".to_string(), 
+      &new_permission_name
+    );
+  }
+
 
   async fn handle_create_permission_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
     let permission = serde_json::from_value::<Permission>(self.data).unwrap();
@@ -315,3 +365,4 @@ impl Event {
     return Ok(());
   }
 }
+

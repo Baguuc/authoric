@@ -439,16 +439,15 @@ impl UserEvent {
   pub async fn login(
     conn: &mut PgConnection,
     login: String,
-    password: String,
-    creator_token: &String
+    password: String
   ) -> Result<(), UserLoginError> {
-    let session_id = User::login(conn, login, password, LoginSessionStatus::OnHold).await?;
-    let data = serde_json::to_value(&session_id).unwrap();
+    let session_token = User::login(conn, login, password, LoginSessionStatus::OnHold).await?;
+    let data = serde_json::to_value(&session_token).unwrap();
     let _ = Event::insert(
       conn,
       EventType::UserLogin,
       data,
-      creator_token
+      &session_token
     ).await;
     
     return Ok(());

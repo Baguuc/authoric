@@ -150,7 +150,6 @@ Fails when the login and password do not match these in the database
 Query parameters:
 + login - Required, represents the login to assign
 + password - Required, represents the password to assign
-+ auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
 ## DELETE /user
 Logs out from the user's account, deleting the session
