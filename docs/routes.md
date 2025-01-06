@@ -117,9 +117,7 @@ Fails when the user is already created.
 JSON Content:
 + login - Required, represents the login to assign
 + password - Required, represents the password to assign
-
-Query parameters:
-+ auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
++ details - Optional, additional details in json format that will be associated with a user (default: empty json object ("{}"))
 
 ### DELETE /users/{user}
 Deletes a user's account from the current login session, removing all of it's sessions

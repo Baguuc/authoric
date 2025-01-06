@@ -174,9 +174,9 @@ impl User {
   /// 
   pub async fn insert(
     conn: &mut PgConnection,
-    login: String,
-    password: String,
-    details: Value
+    login: &String,
+    password: &String,
+    details: &Value
   ) -> Result<(), UserInsertError> {
     let sql = "
       INSERT INTO
@@ -186,7 +186,7 @@ impl User {
       ;
     ";
      
-    let password_hash = match hash_password(password) {
+    let password_hash = match hash_password(password.to_string()) {
       Ok(hash) => hash,
       Err(err) => return Err(UserInsertError::CannotHash(err.to_string()))
     };

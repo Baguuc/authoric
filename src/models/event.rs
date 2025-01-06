@@ -287,7 +287,7 @@ impl Event {
   async fn handle_register_user_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
     let user = serde_json::from_value::<User>(self.data).unwrap();
 
-    match User::insert(conn, user.login, user.password_hash, user.details).await {
+    match User::insert(conn, &user.login, &user.password_hash, &user.details).await {
       Ok(()) => (),
       Err(err) => return Err(err.to_string().into())
     };
