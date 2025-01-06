@@ -2,7 +2,7 @@ use actix_web::{delete, http::StatusCode, post, web::{Data, Json, Path, Query}, 
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use crate::{config::CauthConfig, models::{LoginSession, User}, web::ServerResponse};
+use crate::{config::CauthConfig, models::{login_session::LoginSessionStatus, LoginSession, User}, web::ServerResponse};
 
 #[derive(Deserialize)]
 pub struct PostGroupJsonData {
@@ -97,4 +97,68 @@ pub async fn delete_users(
     StatusCode::OK,
     None
   );
+}
+
+#[derive(Deserialize)]
+pub struct PostUserQueryData {
+  auto_commit: Option<bool>
+}
+
+#[derive(Deserialize)]
+pub struct PostUserJsonData {
+  login: String,
+  password: String,
+}
+
+#[post("/user")]
+pub async fn post_user(
+    query: Query<PostUserQueryData>,
+    json: Json<PostUserJsonData>,
+    data: Data<CauthConfig>
+) -> impl Responder {
+  // these will never error
+  let mut db_conn = data.db_conn
+    .acquire()
+    .await
+    .unwrap();
+
+  let auto_commit = query.auto_commit
+    .unwrap_or(true);
+
+  if auto_commit {
+    let result = User::login(
+        &mut db_conn,
+        &json.login,
+        &json.password,
+        LoginSessionStatus::Commited
+    )
+    .await;
+
+    let token = match result {
+        Ok(token) => token,
+        Err(_) => return ServerResponse::new(
+            StatusCode::BAD_REQUEST,
+            None
+        )
+      };
+    
+      return ServerResponse::new(
+        StatusCode::OK,
+        Some(json!({
+            "token": token
+        }))
+      );
+    } else {
+        let _ = User::event().login(
+            &mut db_conn, 
+            &json.login,
+            &json.password
+        )
+        .await;
+
+        return ServerResponse::new(
+            StatusCode::OK,
+            None
+        );
+    }
 }

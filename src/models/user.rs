@@ -246,8 +246,8 @@ impl User {
   /// 
   pub async fn login(
     conn: &mut PgConnection,
-    login: String,
-    password: String,
+    login: &String,
+    password: &String,
     session_status: LoginSessionStatus
   ) -> Result<String, UserLoginError> {
     let user = match Self::retrieve(conn, &login).await {
@@ -263,7 +263,7 @@ impl User {
 
     let result = LoginSession::insert(
       conn,
-      login,
+      login.to_string(),
       session_status
     )
     .await;
@@ -390,7 +390,7 @@ impl User {
 }
 
 
-struct UserEvent;
+pub struct UserEvent;
 
 
 impl UserEvent {
@@ -402,6 +402,7 @@ impl UserEvent {
   /// + The password cannot be hashed
   ///
   pub async fn register(
+    self: &Self,
     conn: &mut PgConnection,
     login: String,
     password: String,
@@ -437,11 +438,17 @@ impl UserEvent {
   /// + When the credentials are incorrect and the login session cannot be created
   ///
   pub async fn login(
+    self: &Self,
     conn: &mut PgConnection,
-    login: String,
-    password: String
+    login: &String,
+    password: &String
   ) -> Result<(), UserLoginError> {
-    let session_token = User::login(conn, login, password, LoginSessionStatus::OnHold).await?;
+    let session_token = User::login(
+      conn,
+      &login,
+      &password,
+      LoginSessionStatus::OnHold
+    ).await?;
     let data = serde_json::to_value(&session_token).unwrap();
     let _ = Event::insert(
       conn,
@@ -460,6 +467,7 @@ impl UserEvent {
   /// Insert a UserDelete event into database
   ///
   pub async fn delete(
+    self: &Self,
     conn: &mut PgConnection,
     login: String,
     creator_token: &String
