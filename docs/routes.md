@@ -159,7 +159,6 @@ Logs out from the user's account, deleting the session
 
 Query parameters:
 + session_token - Required, token of login session retrieved from POST /user route
-+ auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
 ### POST /users/{name}/{group_name}
 Grants user a group

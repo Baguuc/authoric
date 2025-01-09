@@ -6,7 +6,7 @@ use sqlx::{prelude::FromRow, query, query_as, PgConnection};
 use crate::util::string::json_value_to_pretty_string;
 use crate::models::{event::{Event, EventType}, login_session::{LoginSession, LoginSessionStatus, LoginSessionInsertError}, Order};
 
-use super::event::EventInsertError;
+use super::{event::EventInsertError, login_session::{LoginSessionDeleteError, LoginSessionRetrieveError}};
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct User {
@@ -280,6 +280,33 @@ impl User {
     };
 
     return Ok(token);
+  }
+
+  /// ## User::logout
+  /// 
+  /// Deletes a user login session from the database
+  /// 
+  pub async fn delete_by_token(
+    conn: &mut PgConnection,
+    token: &String
+  ) -> Result<(), LoginSessionDeleteError> {
+    let result = LoginSession::retrieve(conn, token)
+      .await;
+
+    let session = match result {
+      Ok(session) => session,
+      Err(err) => match err {
+        LoginSessionRetrieveError::NotFound => return Err(LoginSessionDeleteError::NotFound)
+      }
+    };
+
+    let result = LoginSession::delete(
+      conn, 
+      session.id
+    )
+    .await;
+
+    return Ok(());
   }
 
   /// ## User::has_permission

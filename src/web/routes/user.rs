@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 use crate::{config::CauthConfig, models::{login_session::LoginSessionStatus, LoginSession, User}, web::ServerResponse};
 
 #[derive(Deserialize)]
-pub struct PostGroupJsonData {
+pub struct PostUsersJsonData {
     login: String,
     password: String,
     details: Option<Value>
@@ -13,7 +13,7 @@ pub struct PostGroupJsonData {
 
 #[post("/users")]
 pub async fn post_users(
-    _json: Json<PostGroupJsonData>,
+    _json: Json<PostUsersJsonData>,
     data: Data<CauthConfig>
 ) -> impl Responder {
   // these will never error
@@ -47,14 +47,14 @@ pub async fn post_users(
 }
 
 #[derive(Deserialize)]
-pub struct DeleteGroupQueryData {
+pub struct DeleteUsersQueryData {
     session_token: String,
     auto_commit: bool
 }
 
 #[delete("/users/{login}")]
 pub async fn delete_users(
-    query: Query<DeleteGroupQueryData>,
+    query: Query<DeleteUsersQueryData>,
     name: Path<String>,
     data: Data<CauthConfig>
 ) -> impl Responder {
@@ -186,4 +186,40 @@ pub async fn post_user(
           )
         }
     }
+}
+
+#[derive(Deserialize)]
+pub struct DeleteUserQueryData {
+    session_token: String
+}
+
+#[delete("/user")]
+pub async fn delete_user(
+    query: Query<DeleteUserQueryData>,
+    data: Data<CauthConfig>
+) -> impl Responder {
+  // these will never error
+  let mut db_conn = data.db_conn
+    .acquire()
+    .await
+    .unwrap();
+
+    let result = User::delete_by_token(
+      &mut db_conn,
+      &query.session_token
+  )
+  .await;
+
+  match result {
+    Ok(token) => return ServerResponse::new(
+      StatusCode::OK,
+      Some(json!({
+          "token": token
+      }))
+    ),
+      Err(_) => return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        None
+    )
+  };
 }
