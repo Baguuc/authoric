@@ -130,7 +130,7 @@ impl User {
     let offset = offset.unwrap_or(0);
     let limit = limit.unwrap_or(10);
     let sql = format!(
-      "SELECT * FROM users ORDER BY {} OFFSET {} ROWS LIMIT {};",
+      "SELECT * FROM users ORDER BY login {} OFFSET {} ROWS LIMIT {};",
       order.to_string(),
       offset,
       limit

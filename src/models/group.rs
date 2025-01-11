@@ -123,7 +123,7 @@ impl Group {
     let limit = limit.unwrap_or(10);
 
     let sql = format!(
-      "SELECT * FROM groups ORDER BY {} OFFSET {} ROWS LIMIT {};",
+      "SELECT * FROM groups ORDER BY name {} OFFSET {} ROWS LIMIT {};",
       order.to_string(),
       offset,
       limit

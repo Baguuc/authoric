@@ -112,7 +112,7 @@ impl Event {
     let limit = limit.unwrap_or(10);
     
     let sql = format!(
-      "SELECT * FROM events ORDER BY {} OFFSET {} ROWS LIMIT {};",
+      "SELECT * FROM events ORDER BY id {} OFFSET {} ROWS LIMIT {};",
       order.to_string(),
       offset,
       limit
