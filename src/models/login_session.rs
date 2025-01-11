@@ -165,6 +165,46 @@ impl LoginSession {
     return Ok(session);
   }
 
+  /// ## LoginSession::retrieve_user
+  /// 
+  /// Selects a user by it's token
+  /// 
+  pub async fn retrieve_user(
+    conn: &mut PgConnection,
+    token: &String
+  ) -> Result<Self, LoginSessionRetrieveError> {
+    let sql = "
+      SELECT 
+        *
+      FROM
+        users u
+      INNER JOIN
+        login_sessions ls
+      ON
+        u.login = ls.user_login
+      WHERE
+        ls.token = $1
+      ;
+    ";
+
+    let q = query_as(&sql)
+      .bind(&token);
+
+    let raw: LoginSessionRaw = match q.fetch_one(&mut *conn).await {
+      Ok(raw) => raw,
+      Err(_) => return Err(LoginSessionRetrieveError::NotFound)
+    };
+
+    let session = LoginSession {
+      id: raw.id,
+      user_login: raw.user_login,
+      status: LoginSessionStatus::from(raw.status),
+      token: raw.token
+    };
+
+    return Ok(session);
+  }
+  
   /// ## LoginSession::insert
   /// 
   /// Inserts a new login session with provided data into the database <br>
