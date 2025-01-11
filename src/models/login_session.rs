@@ -277,7 +277,7 @@ impl LoginSession {
       u.password_hash,
       u.details
     FROM
-      users
+      users u
     INNER JOIN
       login_sessions ls
     ON
