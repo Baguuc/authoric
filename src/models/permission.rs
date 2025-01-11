@@ -82,7 +82,7 @@ impl Permission {
     let limit = limit.unwrap_or(10);
 
     let sql = format!(
-      "SELECT * FROM permissions ORDER BY {} OFFSET {} ROWS LIMIT {};",
+      "SELECT * FROM permissions ORDER BY name {} OFFSET {} ROWS LIMIT {};",
       order.to_string(),
       offset,
       limit
