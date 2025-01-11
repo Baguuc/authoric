@@ -134,7 +134,7 @@ pub async fn get_user(
     .await
     .unwrap();
 
-  let result = LoginSession::retrieve_user(
+  let result = LoginSession::get_user(
     &mut db_conn,
     &query.session_token
   )

@@ -274,8 +274,7 @@ impl User {
       Ok(token) => token,
       Err(err) => match err {
         LoginSessionInsertError::CannotHash(e) => return Err(UserLoginError::CannotHash(e)),
-        // this will not be reached because we know that this user exist as we fetched it before
-        _ => panic!()
+        LoginSessionInsertError::UserNotFound => return Err(UserLoginError::InvalidCredentials),
       }
     };
 
