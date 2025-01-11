@@ -1,14 +1,16 @@
 use clap::Args;
 
-use crate::config::CauthConfig;
+use crate::{config::CauthConfig, web::run_server};
 
 
 #[derive(Debug, Args)]
-pub struct RunCommand;
+pub struct RunCommand {
+
+}
 
 
 impl RunCommand {
   pub fn run(self, config: CauthConfig) {
-    todo!()
+    let _ = run_server(config.port);
   }
 }
