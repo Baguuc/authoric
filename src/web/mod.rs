@@ -5,12 +5,18 @@ use actix_web::{
     header::{
       HeaderName, HeaderValue
     }, StatusCode
-  }, App, HttpRequest, HttpResponse, HttpServer, Responder
+  }, web::Data, App, HttpRequest, HttpResponse, HttpServer, Responder
 };
 
-pub async fn run_server(port: u16) -> std::io::Result<()> {
-  HttpServer::new(|| {
+use crate::config::CauthConfig;
+
+pub async fn run_server(config: CauthConfig) -> std::io::Result<()> {
+  simple_logger::SimpleLogger::new().init().ok();
+
+  let binding = config.clone();
+  HttpServer::new(move || {
     App::new()
+      .app_data(Data::new(binding.clone()))
       .service(routes::permissions::get_permissions)
       .service(routes::permissions::post_permission)
       .service(routes::permissions::delete_permission)
@@ -24,7 +30,7 @@ pub async fn run_server(port: u16) -> std::io::Result<()> {
       .service(routes::event::commit_event)
       .service(routes::event::cancel_event)
   })
-  .bind(("127.0.0.1", port))?
+  .bind(("127.0.0.1", config.port))?
   .run()
   .await?;
 

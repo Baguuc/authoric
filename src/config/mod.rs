@@ -11,6 +11,7 @@ pub struct CauthConfigRaw {
   port: u16
 }
 
+#[derive(Clone)]
 pub struct CauthConfig {
   pub db_conn: PgPool,
   pub port: u16

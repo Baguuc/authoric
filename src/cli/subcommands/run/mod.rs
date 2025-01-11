@@ -1,4 +1,5 @@
 use clap::Args;
+use futures::executor::block_on;
 
 use crate::{config::CauthConfig, web::run_server};
 
@@ -11,6 +12,6 @@ pub struct RunCommand {
 
 impl RunCommand {
   pub fn run(self, config: CauthConfig) {
-    let _ = run_server(config.port);
+    let _ = block_on(run_server(config));
   }
 }
