@@ -1,4 +1,4 @@
-use actix_web::{delete, http::StatusCode, post, web::{Data, Json, Path, Query}, Responder};
+use actix_web::{delete, get, http::StatusCode, post, web::{Data, Json, Path, Query}, Responder};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
@@ -123,7 +123,7 @@ struct GetUserQueryData {
   session_token: String
 }
 
-#[post("/users")]
+#[get("/user")]
 pub async fn get_user(
   query: Query<GetUserQueryData>,
   data: Data<CauthConfig>

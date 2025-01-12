@@ -25,6 +25,7 @@ pub async fn run_server(config: CauthConfig) -> std::io::Result<()> {
       .service(routes::groups::delete_group)
       .service(routes::user::post_users)
       .service(routes::user::delete_users)
+      .service(routes::user::get_user)
       .service(routes::user::post_user)
       .service(routes::user::delete_user)
       .service(routes::event::commit_event)
