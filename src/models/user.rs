@@ -281,33 +281,6 @@ impl User {
     return Ok(token);
   }
 
-  /// ## User::logout
-  /// 
-  /// Deletes a user login session from the database
-  /// 
-  pub async fn delete_by_token(
-    conn: &mut PgConnection,
-    token: &String
-  ) -> Result<(), LoginSessionDeleteError> {
-    let result = LoginSession::retrieve(conn, token)
-      .await;
-
-    let session = match result {
-      Ok(session) => session,
-      Err(err) => match err {
-        LoginSessionRetrieveError::NotFound => return Err(LoginSessionDeleteError::NotFound)
-      }
-    };
-
-    let result = LoginSession::delete(
-      conn, 
-      session.id
-    )
-    .await;
-
-    return Ok(());
-  }
-
   /// ## User::has_permission
   /// 
   /// Check if a user has a specified permission

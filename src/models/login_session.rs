@@ -131,7 +131,7 @@ type LoginSessionUpdateError = ();
 impl LoginSession {
   /// ## LoginSession::retrieve
   /// 
-  /// Selects a user's loggin session with specified token from the database
+  /// Selects a user's login session with specified token from the database
   /// 
   pub async fn retrieve(
     conn: &mut PgConnection,
@@ -144,6 +144,8 @@ impl LoginSession {
         login_sessions
       WHERE
         token = $1
+      AND
+        status = 'Commited';
       ;
     ";
 
@@ -225,6 +227,34 @@ impl LoginSession {
     let sql = "DELETE FROM login_sessions WHERE id = $1";
     let result = query(sql)
       .bind(&session_id)
+      .execute(&mut *conn)
+      .await;
+
+    let rows_affected = result
+      .unwrap()
+      .rows_affected();
+
+    if rows_affected == 0 {
+      return Err(LoginSessionDeleteError::NotFound)
+    }
+
+    return Ok(());
+  }
+
+  /// ## LoginSession::delete_by_token
+  /// 
+  /// Deletes a user login session from the database
+  /// 
+  /// Errors:
+  /// + When the session is not found
+  /// 
+  pub async fn delete_by_token(
+    conn: &mut PgConnection,
+    token: &String
+  ) -> Result<(), LoginSessionDeleteError> {
+    let sql = "DELETE FROM login_sessions WHERE token = $1;";
+    let result = query(sql)
+      .bind(&token)
       .execute(&mut *conn)
       .await;
 

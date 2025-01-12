@@ -238,18 +238,16 @@ pub async fn delete_user(
     .await
     .unwrap();
 
-    let result = User::delete_by_token(
+    let result = LoginSession::delete_by_token(
       &mut db_conn,
       &query.session_token
   )
   .await;
 
   match result {
-    Ok(token) => return ServerResponse::new(
+    Ok(_) => return ServerResponse::new(
       StatusCode::OK,
-      Some(json!({
-          "token": token
-      }))
+      None
     ),
       Err(_) => return ServerResponse::new(
         StatusCode::BAD_REQUEST,
