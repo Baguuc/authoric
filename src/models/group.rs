@@ -122,12 +122,19 @@ impl Group {
     let offset = offset.unwrap_or(0);
     let limit = limit.unwrap_or(10);
 
-    let sql = format!(
-      "SELECT * FROM groups ORDER BY name {} OFFSET {} ROWS LIMIT {};",
-      order.to_string(),
-      offset,
-      limit
-    );
+    let sql = format!("
+    SELECT 
+      g.name,
+      g.description,
+      ARRAY_REMOVE(ARRAY_AGG(gp.permission_name), NULL) AS permissions
+    FROM groups g
+    INNER JOIN groups_permissions gp ON gp.group_name = g.name
+    GROUP BY g.name
+    ORDER BY g.name {}
+    OFFSET {} ROWS
+    limit {};
+    ", order.to_string(), offset, limit);
+
     let result = query_as(&sql)
       .fetch_all(&mut *conn)
       .await
