@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_yml::Value;
 use simple_home_dir::home_dir;
 use sqlx::PgPool;
+use crate::util::io::input;
 
 #[derive(Serialize, Deserialize)]
 pub struct CauthConfigRaw {
@@ -34,9 +35,24 @@ impl CauthConfig {
     match config {
       Ok(config) => return config,
       Err(_) => {
-        Self::edit();
+        let result = input("Cannot parse the config invalid or missing port and database url.\nYou can find the config at $HOME/.cauth/config.yml.\nDo you want to edit the config with your default editor now? (Y/n)");
+        let launch_editor = match result {
+            Ok(result) => {
+                if result != "n" {
+                    true
+                } else { 
+                    false 
+                }
+            },
+            Err(_) => true
+        };
 
-        return Self::parse_or_edit();
+        if !launch_editor {
+            exit(0);
+        } else {
+            Self::edit(); 
+            exit(0);
+        }
       }
     };
   }
