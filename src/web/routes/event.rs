@@ -24,7 +24,7 @@ pub async fn commit_event(
 ) -> impl Responder {
   // these will never error
   let mut db_conn = data.db_conn
-    .acquire()
+    .begin()
     .await
     .unwrap();
 
@@ -61,7 +61,14 @@ pub async fn commit_event(
       }))
     )
   };
-
+  
+  match db_conn.commit().await {
+    Ok(_) => (),
+    Err(err) => {
+      eprintln!("Error committing changes: {}", err);
+    }
+  };
+  
   return ServerResponse::new(
     StatusCode::OK,
     None
@@ -81,7 +88,7 @@ pub async fn cancel_event(
 ) -> impl Responder {
   // these will never error
   let mut db_conn = data.db_conn
-    .acquire()
+    .begin()
     .await
     .unwrap();
 
@@ -111,6 +118,13 @@ pub async fn cancel_event(
 
   let _ = event.delete(&mut db_conn).await;
 
+  match db_conn.commit().await {
+    Ok(_) => (),
+    Err(err) => {
+      eprintln!("Error committing changes: {}", err);
+    }
+  };
+  
   return ServerResponse::new(
     StatusCode::OK,
     None

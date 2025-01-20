@@ -33,7 +33,7 @@ pub async fn post_users(
     &details
   )
   .await;
-
+ 
   match result {
     Ok(_) => return ServerResponse::new(
       StatusCode::OK,
@@ -60,7 +60,7 @@ pub async fn delete_users(
 ) -> impl Responder {
   // these will never error
   let mut db_conn = data.db_conn
-    .acquire()
+    .begin()
     .await
     .unwrap();
 
@@ -84,6 +84,13 @@ pub async fn delete_users(
       (&name).to_string()
     )
     .await;
+    
+    match db_conn.commit().await {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("Error committing changes: {}", err);
+        }
+    };
 
     match result {
       Ok(_) => return ServerResponse::new(
@@ -95,7 +102,7 @@ pub async fn delete_users(
         None
       )
     }
-  } else {
+  } else { 
     let result = User::event().delete(
       &mut db_conn,
       (&name).to_string(),
@@ -103,6 +110,13 @@ pub async fn delete_users(
     )
     .await;
 
+    match db_conn.commit().await {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("Error committing changes: {}", err);
+        }
+    };
+    
     match result {
       Ok(event_id) => return ServerResponse::new(
         StatusCode::OK,
@@ -154,7 +168,7 @@ pub async fn get_user(
 
 #[derive(Deserialize)]
 pub struct PostUserQueryData {
-  auto_commit: Option<bool>
+    auto_commit: Option<bool>
 }
 
 #[derive(Deserialize)]
@@ -171,7 +185,7 @@ pub async fn post_user(
 ) -> impl Responder {
   // these will never error
   let mut db_conn = data.db_conn
-    .acquire()
+    .begin()
     .await
     .unwrap();
 
@@ -186,6 +200,13 @@ pub async fn post_user(
         LoginSessionStatus::Commited
     )
     .await;
+ 
+    match db_conn.commit().await {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("Error committing changes: {}", err);
+        }
+    };
 
     match result {
         Ok(token) => return ServerResponse::new(
@@ -206,6 +227,13 @@ pub async fn post_user(
             &json.password
         )
         .await;
+        
+        match db_conn.commit().await {
+            Ok(_) => (),
+            Err(err) => {
+                eprintln!("Error committing changes: {}", err);
+            }
+        };
 
         match result {
           Ok(event_id) => return ServerResponse::new(
@@ -234,7 +262,7 @@ pub async fn delete_user(
 ) -> impl Responder {
   // these will never error
   let mut db_conn = data.db_conn
-    .acquire()
+    .begin()
     .await
     .unwrap();
 
@@ -244,12 +272,19 @@ pub async fn delete_user(
   )
   .await;
 
+  match db_conn.commit().await {
+    Ok(_) => (),
+    Err(err) => {
+      eprintln!("Error committing changes: {}", err);
+    }
+  };
+
   match result {
     Ok(_) => return ServerResponse::new(
       StatusCode::OK,
       None
     ),
-      Err(_) => return ServerResponse::new(
+    Err(_) => return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         None
     )

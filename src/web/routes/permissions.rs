@@ -55,11 +55,6 @@ pub async fn get_permissions(
       None
     );
   }
-
-  let mut db_conn = data.db_conn
-    .acquire()
-    .await
-    .unwrap();
   
   let result = Permission::list(
     &mut db_conn,
@@ -117,29 +112,12 @@ pub async fn post_permission(
       None
     );
   }
-
-  return insert_permission(
-    &mut db_conn,
-    &json.name,
-    &json.description,
-    auto_commit,
-    &query.session_token
-  ).await;
-}
-
-
-async fn insert_permission(
-  conn: &mut PgConnection, 
-  name: &String, 
-  description: &String,
-  auto_commit: bool,
-  creator_token: &String
-) -> ServerResponse {
+  
   if auto_commit {
     let result = Permission::insert(
-      conn,
-      name,
-      description
+      &mut db_conn,
+      &json.name,
+      &json.description
     )
     .await;
 
@@ -155,13 +133,13 @@ async fn insert_permission(
     }
   } else {
     let result = Permission::event().insert(
-      conn,
-      name,
-      description,
-      &creator_token
+      &mut db_conn,
+      &json.name,
+      &json.description,
+      &query.session_token
     )
     .await;
-
+    
     match result {
       Ok(event_id) => return ServerResponse::new(
         StatusCode::OK,
@@ -176,7 +154,6 @@ async fn insert_permission(
     }
   }
 }
-
 
 #[derive(Deserialize)]
 struct DeletePermissionQueryData {
@@ -214,25 +191,10 @@ pub async fn delete_permission(
     );
   }
 
-  return del_permission(
-    &mut db_conn,
-    &name,
-    auto_commit,
-    &query.session_token
-  ).await
-}
-
-
-async fn del_permission(
-  conn: &mut PgConnection, 
-  name: &String,
-  auto_commit: bool,
-  creator_token: &String
-) -> ServerResponse {
-   if auto_commit {
+  if auto_commit {
     let result = Permission::delete(
-      conn,
-      name
+      &mut db_conn,
+      &name.into_inner()
     )
     .await;
 
@@ -248,12 +210,12 @@ async fn del_permission(
     }
   } else {
     let result = Permission::event().delete(
-      conn,
-      name,
-      &creator_token
+      &mut db_conn,
+      &name.into_inner(),
+      &query.session_token
     )
     .await;
-
+    
     match result {
       Ok(event_id) => return ServerResponse::new(
         StatusCode::OK,

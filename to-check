@@ -1,0 +1,14 @@
+TO-CHECK:
++ creating user OK
++ login OK
++ logout
++ get permissions
++ insert permissions
++ delete permissions
++ get groups
++ insert group
++ delete group
++ event creation
++ event committing
++ event canceling
++ user deletion

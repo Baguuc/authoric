@@ -55,11 +55,6 @@ pub async fn get_groups(
       None
     );
   }
-
-  let mut db_conn = data.db_conn
-    .acquire()
-    .await
-    .unwrap();
   
   let result = Group::list(
     &mut db_conn,
@@ -97,7 +92,7 @@ pub async fn post_group(
 ) -> impl Responder {
   // these will never error
   let mut db_conn = data.db_conn
-    .acquire()
+    .begin()
     .await
     .unwrap();
 
@@ -119,35 +114,22 @@ pub async fn post_group(
     );
   }
 
-  return insert_group(
-    &mut db_conn,
-    &json.name,
-    &json.description,
-    &json.permissions,
-    auto_commit,
-    &query.session_token
-  )
-  .await;
-}
-
-
-async fn insert_group(
-  conn: &mut PgConnection, 
-  name: &String, 
-  description: &String,
-  permissions: &Vec<String>,
-  auto_commit: bool,
-  creator_token: &String
-) -> ServerResponse {
   if auto_commit {
     let result = Group::insert(
-      conn,
-      name,
-      description,
-      permissions
+      &mut db_conn,
+      &json.name,
+      &json.description,
+      &json.permissions
     )
-    .await;
+   .await;
 
+    match db_conn.commit().await {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("Error committing changes: {}", err);
+        }
+    };
+    
     match result {
       Ok(_) => return ServerResponse::new(
         StatusCode::OK,
@@ -160,14 +142,21 @@ async fn insert_group(
     }
   } else {
     let result = Group::event().insert(
-      conn,
-      name,
-      description,
-      permissions,
-      creator_token
+      &mut db_conn,
+      &json.name,
+      &json.description,
+      &json.permissions,
+      &query.session_token
     )
     .await;
 
+    match db_conn.commit().await {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("Error committing changes: {}", err);
+        }
+    };
+    
     match result {
       Ok(event_id) => return ServerResponse::new(
         StatusCode::OK,
@@ -197,7 +186,7 @@ pub async fn delete_group(
 ) -> impl Responder {
   // these will never error
   let mut db_conn = data.db_conn
-    .acquire()
+    .begin()
     .await
     .unwrap();
 
@@ -219,28 +208,13 @@ pub async fn delete_group(
     );
   }
 
-  return del_group(
-    &mut db_conn,
-    &name,
-    auto_commit,
-    &query.session_token
-  )
-  .await
-}
-
-async fn del_group(
-  conn: &mut PgConnection, 
-  name: &String,
-  auto_commit: bool,
-  creator_token: &String
-) -> ServerResponse {
   if auto_commit {
     let result = Group::delete(
-      conn,
-      name
+      &mut db_conn,
+      &name
     )
     .await;
-
+     
     match result {
       Ok(_) => return ServerResponse::new(
         StatusCode::OK,
@@ -253,12 +227,19 @@ async fn del_group(
     }
   } else {
     let result = Group::event().delete(
-      conn,
-      name,
-      creator_token
+      &mut db_conn,
+      &name,
+      &query.session_token
     )
     .await;
-
+    
+    match db_conn.commit().await {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("Error committing changes: {}", err);
+        }
+    };
+    
     match result {
       Ok(event_id) => return ServerResponse::new(
         StatusCode::OK,
