@@ -255,3 +255,32 @@ pub async fn delete_user(
     )
   };
 }
+
+
+
+#[get("/user/permissions/{permission_name}")]
+pub async fn get_user_permissions(
+    permission_name: Path<String>,
+    query: Query<DeleteUserQueryData>,
+    data: Data<CauthConfig>
+) -> impl Responder {
+  // these will never error
+  let mut db_conn = data.db_conn
+    .acquire()
+    .await
+    .unwrap();
+
+  let result = LoginSession::has_permission(
+    &mut db_conn,
+    &query.session_token,
+    &permission_name.into_inner()
+  )
+  .await;
+
+  return ServerResponse::new(
+    StatusCode::OK,
+    Some(json!({
+        "has": result
+    }))
+  );
+}

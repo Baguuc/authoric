@@ -205,3 +205,9 @@ Requirements:
 
 Query parameters:
 + session_token - Required, token of login session retrieved from POST /user route
+
+### GET /user/permissions/{permission_name}
+Check if current user has specified permission
+
+Query parameters:
++ session_token - Required, token of login session retrieved from POST /user route
