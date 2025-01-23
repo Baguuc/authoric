@@ -161,7 +161,7 @@ struct DeletePermissionQueryData {
   auto_commit: Option<bool>
 }
 
-#[delete("/permissions")]
+#[delete("/permissions/{name}")]
 pub async fn delete_permission(
   query: Query<DeletePermissionQueryData>,
   data: Data<CauthConfig>,
