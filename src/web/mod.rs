@@ -11,7 +11,8 @@ use actix_web::{
 use crate::{
     config::CauthConfig,
     web::controllers::{
-        ListPermissionsController
+        ListPermissionsController,
+        InsertPermissionController
     }
 };
 
@@ -23,7 +24,7 @@ pub async fn run_server(config: CauthConfig) -> std::io::Result<()> {
         App::new()
             .app_data(Data::new(binding.clone()))
             .service(ListPermissionsController)
-            .service(routes::permissions::post_permission)
+            .service(InsertPermissionController)
             .service(routes::permissions::delete_permission)
             .service(routes::groups::get_groups)
             .service(routes::groups::post_group)

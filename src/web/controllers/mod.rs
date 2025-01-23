@@ -2,6 +2,7 @@ pub mod permissions;
 
 pub use self::{
     permissions::{
-        list::controller as ListPermissionsController
+        list::controller as ListPermissionsController,
+        insert::controller as InsertPermissionController
     }
 };
