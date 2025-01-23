@@ -277,7 +277,7 @@ pub async fn grant_permission(
   let permitted = LoginSession::has_permission(
     &mut db_conn,
     &query.session_token,
-    "cauth:groups:grant-permissions"
+    "cauth:group:update"
   )
   .await;
 
@@ -300,7 +300,7 @@ pub async fn grant_permission(
   match result {
       Ok(_) => (),
       Err(_) => {
-          return ServerResponse(
+          return ServerResponse::new(
             StatusCode::BAD_REQUEST,
             None
           )
@@ -321,7 +321,10 @@ pub async fn grant_permission(
 }
 
 #[delete("/groups/{name}/{permission_name}")]
-pub async fn revoke_permission() -> impl Responder {
+pub async fn revoke_permission(
+    data: Data<CauthConfig>,
+    path: Path<(String, String)>
+) -> impl Responder {
   // these will never error
   let mut db_conn = data.db_conn
     .begin()
@@ -354,10 +357,10 @@ pub async fn revoke_permission() -> impl Responder {
   match result {
       Ok(_) => (),
       Err(_) => {
-          return ServerResponse(
+          return ServerResponse::new(
             StatusCode::BAD_REQUEST,
             None
-          )
+          );
       }
   };
 

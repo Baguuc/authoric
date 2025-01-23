@@ -331,7 +331,7 @@ impl GroupEvent {
     description: &String,
     permissions: &Vec<String>,
     creator_token: &String
-  ) -> Result<i64, EventInsertError> {
+  ) -> Result<i32, EventInsertError> {
     let data = Group {
       name: name.to_string(),
       description: description.to_string(),
@@ -357,7 +357,7 @@ impl GroupEvent {
     conn: &mut PgConnection,
     name: &String,
     creator_token: &String
-  ) -> Result<i64, EventInsertError> {
+  ) -> Result<i32, EventInsertError> {
     let data = serde_json::to_value(&name).unwrap();
 
     return Event::insert(
