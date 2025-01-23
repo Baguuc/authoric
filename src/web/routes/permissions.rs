@@ -25,53 +25,6 @@ use crate::{
 };
 
 #[derive(Deserialize)]
-struct GetPermissionsQueryData {
-    session_token: String,
-    order_in: Option<Order>,
-    page: Option<usize>
-}
-
-#[get("/permissions")]
-pub async fn get_permissions(
-  query: Query<GetPermissionsQueryData>,
-  data: Data<CauthConfig>
-) -> impl Responder {
-  // these will never error
-  let mut db_conn = data.db_conn
-    .acquire()
-    .await
-    .unwrap();
-
-  let permitted = LoginSession::has_permission(
-    &mut db_conn,
-    &query.session_token,
-    "cauth:permissions:get"
-  )
-  .await;
-
-  if !permitted {
-    return ServerResponse::new(
-      StatusCode::UNAUTHORIZED,
-      None
-    );
-  }
-  
-  let result = Permission::list(
-    &mut db_conn,
-    query.order_in,
-    Some(query.page.unwrap_or(0) * 10),
-    Some(10)
-  )
-  .await
-  .unwrap();
-
-  return ServerResponse::new(
-    StatusCode::OK,
-    Some(json!(result))
-  );
-}
-
-#[derive(Deserialize)]
 struct PostPermissionQueryData {
   session_token: String,
   auto_commit: Option<bool>

@@ -1,4 +1,5 @@
 pub mod routes;
+pub mod controllers;
 
 use actix_web::{
   body::BoxBody, http::{
@@ -7,40 +8,44 @@ use actix_web::{
     }, StatusCode
   }, web::Data, App, HttpRequest, HttpResponse, HttpServer, Responder
 };
-
-use crate::config::CauthConfig;
+use crate::{
+    config::CauthConfig,
+    web::controllers::{
+        ListPermissionsController
+    }
+};
 
 pub async fn run_server(config: CauthConfig) -> std::io::Result<()> {
-  simple_logger::SimpleLogger::new().init().ok();
+    simple_logger::SimpleLogger::new().init().ok();
 
-  let binding = config.clone();
-  HttpServer::new(move || {
-    App::new()
-      .app_data(Data::new(binding.clone()))
-      .service(routes::permissions::get_permissions)
-      .service(routes::permissions::post_permission)
-      .service(routes::permissions::delete_permission)
-      .service(routes::groups::get_groups)
-      .service(routes::groups::post_group)
-      .service(routes::groups::delete_group)
-      .service(routes::groups::grant_permission)
-      .service(routes::groups::revoke_permission)
-      .service(routes::user::post_users)
-      .service(routes::user::delete_users)
-      .service(routes::user::get_user)
-      .service(routes::user::get_user_permissions)
-      .service(routes::user::post_user)
-      .service(routes::user::delete_user)
-      .service(routes::user::grant_group)
-      .service(routes::user::revoke_group)
-      .service(routes::event::commit_event)
-      .service(routes::event::cancel_event)
-  })
-  .bind(("127.0.0.1", config.port))?
-  .run()
-  .await?;
+    let binding = config.clone();
+    HttpServer::new(move || {
+        App::new()
+            .app_data(Data::new(binding.clone()))
+            .service(ListPermissionsController)
+            .service(routes::permissions::post_permission)
+            .service(routes::permissions::delete_permission)
+            .service(routes::groups::get_groups)
+            .service(routes::groups::post_group)
+            .service(routes::groups::delete_group)
+            .service(routes::groups::grant_permission)
+            .service(routes::groups::revoke_permission)
+            .service(routes::user::post_users)
+            .service(routes::user::delete_users)
+            .service(routes::user::get_user)
+            .service(routes::user::get_user_permissions)
+            .service(routes::user::post_user)
+            .service(routes::user::delete_user)
+            .service(routes::user::grant_group)
+            .service(routes::user::revoke_group)
+            .service(routes::event::commit_event)
+            .service(routes::event::cancel_event)
+    })
+    .bind(("127.0.0.1", config.port))?
+    .run()
+    .await?;
 
-  return Ok(());
+    return Ok(());
 }
 
 pub struct ServerResponse {
