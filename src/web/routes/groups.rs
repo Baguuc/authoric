@@ -215,6 +215,13 @@ pub async fn delete_group(
     )
     .await;
      
+    match db_conn.commit().await {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("Error committing changes: {}", err);
+        }
+    };
+    
     match result {
       Ok(_) => return ServerResponse::new(
         StatusCode::OK,
