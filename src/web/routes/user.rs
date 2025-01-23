@@ -357,7 +357,7 @@ pub async fn grant_group(
   match result {
       Ok(_) => (),
       Err(_) => {
-          return ServerResponse(
+          return ServerResponse::new(
             StatusCode::BAD_REQUEST,
             None
           )
@@ -414,7 +414,7 @@ pub async fn revoke_group(
   match result {
       Ok(_) => (),
       Err(_) => {
-          return ServerResponse(
+          return ServerResponse::new(
             StatusCode::BAD_REQUEST,
             None
           )

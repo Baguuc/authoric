@@ -31,6 +31,8 @@ pub async fn run_server(config: CauthConfig) -> std::io::Result<()> {
       .service(routes::user::get_user_permissions)
       .service(routes::user::post_user)
       .service(routes::user::delete_user)
+      .service(routes::user::grant_group)
+      .service(routes::user::revoke_group)
       .service(routes::event::commit_event)
       .service(routes::event::cancel_event)
   })
