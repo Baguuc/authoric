@@ -183,7 +183,7 @@ impl PermissionEvent {
     name: &String,
     description: &String,
     creator_token: &String
-  ) -> Result<i64, EventInsertError> {
+  ) -> Result<i32, EventInsertError> {
     let data = Permission {
       name: name.to_string(),
       description: description.to_string()
@@ -210,7 +210,7 @@ impl PermissionEvent {
     conn: &mut PgConnection,
     name: &String,
     creator_token: &String
-  ) -> Result<i64, EventInsertError> {
+  ) -> Result<i32, EventInsertError> {
     let data = serde_json::to_value(&name).unwrap();
 
     return Event::insert(

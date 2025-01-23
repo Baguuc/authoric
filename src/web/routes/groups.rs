@@ -261,3 +261,115 @@ pub async fn delete_group(
     }
   }
 }
+
+
+#[post("/groups/{name}/{permission_name}")]
+pub async fn grant_permission(
+    data: Data<CauthConfig>,
+    path: Path<(String, String)>
+) -> impl Responder {
+  // these will never error
+  let mut db_conn = data.db_conn
+    .begin()
+    .await
+    .unwrap();
+
+  let permitted = LoginSession::has_permission(
+    &mut db_conn,
+    &query.session_token,
+    "cauth:groups:grant-permissions"
+  )
+  .await;
+
+  if !permitted {
+    return ServerResponse::new(
+      StatusCode::UNAUTHORIZED,
+      None
+    );
+  }
+
+  let (group_name, permision_name) = path.into_inner();
+
+  let result = Group::grant_permission(
+    &mut db_conn,
+    &group_name,
+    &permission_name
+  )
+  .await;
+
+  match result {
+      Ok(_) => (),
+      Err(_) => {
+          return ServerResponse(
+            StatusCode::BAD_REQUEST,
+            None
+          )
+      }
+  };
+
+  match db_conn.commit().await {
+    Ok(_) => (),
+    Err(err) => {
+      eprintln!("Error committing changes: {}", err);
+    }
+  };
+
+  return ServerResponse::new(
+    StatusCode::OK,
+    None
+  );
+}
+
+#[delete("/groups/{name}/{permission_name}")]
+pub async fn revoke_permission() -> impl Responder {
+  // these will never error
+  let mut db_conn = data.db_conn
+    .begin()
+    .await
+    .unwrap();
+
+  let permitted = LoginSession::has_permission(
+    &mut db_conn,
+    &query.session_token,
+    "cauth:groups:update"
+  )
+  .await;
+
+  if !permitted {
+    return ServerResponse::new(
+      StatusCode::UNAUTHORIZED,
+      None
+    );
+  }
+
+  let (group_name, permision_name) = path.into_inner();
+
+  let result = Group::revoke_permission(
+    &mut db_conn,
+    &group_name,
+    &permission_name
+  )
+  .await;
+
+  match result {
+      Ok(_) => (),
+      Err(_) => {
+          return ServerResponse(
+            StatusCode::BAD_REQUEST,
+            None
+          )
+      }
+  };
+
+  match db_conn.commit().await {
+    Ok(_) => (),
+    Err(err) => {
+      eprintln!("Error committing changes: {}", err);
+    }
+  };
+
+  return ServerResponse::new(
+    StatusCode::OK,
+    None
+  );
+}

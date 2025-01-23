@@ -54,7 +54,7 @@ impl ToString for LoginSessionStatus {
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct LoginSessionRaw {
-  pub id: i64,
+  pub id: i32,
   pub user_login: String,
   pub status: String,
   pub token: String
@@ -62,7 +62,7 @@ pub struct LoginSessionRaw {
 
 #[derive(Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct LoginSession {
-  pub id: i64,
+  pub id: i32,
   pub user_login: String,
   pub status: LoginSessionStatus,
   pub token: String
@@ -222,7 +222,7 @@ impl LoginSession {
   /// 
   pub async fn delete(
     conn: &mut PgConnection,
-    session_id: i64
+    session_id: i32
   ) -> Result<(), LoginSessionDeleteError> {
     let sql = "DELETE FROM login_sessions WHERE id = $1";
     let result = query(sql)
@@ -275,7 +275,7 @@ impl LoginSession {
   /// 
   pub async fn update(
     conn: &mut PgConnection,
-    session_id: &i64,
+    session_id: &i32,
     new_status: LoginSessionStatus
   ) -> Result<(), LoginSessionUpdateError> {
     let sql = "UPDATE login_sessions SET status = $1 WHERE id = $2;";

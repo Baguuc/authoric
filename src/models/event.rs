@@ -10,7 +10,7 @@ use super::{group::Group, login_session::{LoginSession, LoginSessionStatus}, per
 
 #[derive(FromRow, Serialize, Deserialize)]
 pub struct EventRaw {
-  id: i64,
+  id: i32,
   _type: String,
   data: Value
 }
@@ -58,7 +58,7 @@ impl ToString for EventType {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Event {
-  id: i64,
+  id: i32,
   _type: EventType,
   data: Value
 }
@@ -143,7 +143,7 @@ impl Event {
   /// Errors:
   /// + When a event with specified id do not exist
   /// 
-  pub async fn retrieve(conn: &mut PgConnection, with_id: i64) -> Result<Self, EventRetrieveError> {
+  pub async fn retrieve(conn: &mut PgConnection, with_id: i32) -> Result<Self, EventRetrieveError> {
     let sql = "SELECT * FROM events WHERE id = $1;";
     let result = query_as(sql)
       .bind(&with_id)
@@ -168,14 +168,14 @@ impl Event {
   /// 
   /// Inserts a event with provided data into the database and uses grant_event_permission function on it <br>
   /// 
-  pub async fn insert(conn: &mut PgConnection, _type: EventType, data: Value, creator_token: &String) -> Result<i64, EventInsertError> {
+  pub async fn insert(conn: &mut PgConnection, _type: EventType, data: Value, creator_token: &String) -> Result<i32, EventInsertError> {
     let sql = "INSERT INTO events (_type, data) VALUES ($1, $2) RETURNING id;";
     let result = query_as(sql)
       .bind(_type.to_string())
       .bind(data)
       .fetch_one(&mut *conn)
       .await;
-    let returned_row: (i64,) = result.unwrap();
+    let returned_row: (i32,) = result.unwrap();
     let event_id = returned_row.0;
 
     Self::grant_event_permission(
@@ -247,7 +247,7 @@ impl Event {
   /// Panics:
   /// + this function assumes that the owner_token is validated and user with provided token exists
   ///
-  pub async fn grant_event_permission(conn: &mut PgConnection, event_id: i64, owner_token: &String) {
+  pub async fn grant_event_permission(conn: &mut PgConnection, event_id: i32, owner_token: &String) {
     let owner = LoginSession::retrieve(
       conn, 
       owner_token
@@ -346,7 +346,7 @@ impl Event {
   }
 
   async fn handle_login_user_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
-    let session_id = serde_json::from_value::<i64>(self.data).unwrap();
+    let session_id = serde_json::from_value::<i32>(self.data).unwrap();
 
     let _ = LoginSession::update(
       conn,

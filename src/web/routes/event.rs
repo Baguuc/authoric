@@ -20,7 +20,7 @@ struct CommitEventQueryData {
 pub async fn commit_event(
   query: Query<CommitEventQueryData>,
   data: Data<CauthConfig>,
-  id: Path<i64>
+  id: Path<i32>
 ) -> impl Responder {
   // these will never error
   let mut db_conn = data.db_conn
@@ -84,7 +84,7 @@ struct CancelEventQueryData {
 pub async fn cancel_event(
   query: Query<CancelEventQueryData>,
   data: Data<CauthConfig>,
-  id: Path<i64>
+  id: Path<i32>
 ) -> impl Responder {
   // these will never error
   let mut db_conn = data.db_conn

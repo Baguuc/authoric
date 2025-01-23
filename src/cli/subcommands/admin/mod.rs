@@ -121,7 +121,7 @@ pub struct AdminInspectStringIDCommand {
 
 #[derive(Debug, Args)]
 pub struct AdminInspectIntegerIDCommand {
-  pub id: i64
+  pub id: i32
 }
 
 impl AdminInspectCommand {

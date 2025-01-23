@@ -452,7 +452,7 @@ impl UserEvent {
     conn: &mut PgConnection,
     login: &String,
     password: &String
-  ) -> Result<i64, UserLoginEventInsertError> {
+  ) -> Result<i32, UserLoginEventInsertError> {
     let result = User::login(
       conn,
       &login,
@@ -495,7 +495,7 @@ impl UserEvent {
     conn: &mut PgConnection,
     login: String,
     creator_token: &String
-  ) -> Result<i64, EventInsertError> {
+  ) -> Result<i32, EventInsertError> {
     let data = serde_json::to_value(&login).unwrap();
     return Event::insert(
       conn,
