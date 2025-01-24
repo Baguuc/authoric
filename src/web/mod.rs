@@ -1,4 +1,3 @@
-pub mod routes;
 pub mod controllers;
 
 use actix_web::{
@@ -27,7 +26,8 @@ use crate::{
         LogoutUserController,
         GrantGroupUserController,
         RevokeGroupUserController,
-        CommitEventController
+        CommitEventController,
+        CancelEventController
     }
 };
 
@@ -55,7 +55,7 @@ pub async fn run_server(config: CauthConfig) -> std::io::Result<()> {
             .service(GrantGroupUserController)
             .service(RevokeGroupUserController)
             .service(CommitEventController)
-            .service(routes::event::cancel_event)
+            .service(CancelEventController)
     })
     .bind(("127.0.0.1", config.port))?
     .run()

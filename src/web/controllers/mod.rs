@@ -27,6 +27,7 @@ pub use self::{
         revoke_group::controller as RevokeGroupUserController
     },
     events::{
-        commit::controller as CommitEventController
+        commit::controller as CommitEventController,
+        cancel::controller as CancelEventController
     }
 };

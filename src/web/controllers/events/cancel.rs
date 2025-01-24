@@ -1,5 +1,5 @@
 use actix_web::{
-    post,
+    delete,
     http::StatusCode,
     web::{
         Data,
@@ -22,25 +22,25 @@ use crate::{
 
 #[derive(Deserialize)]
 struct QueryData {
-  session_token: String
+    session_token: String
 }
 
 type PathData = i32;
 
-#[post("/events/{id}")]
+#[delete("/events/{id}")]
 pub async fn controller(
     query: Query<QueryData>,
     path: Path<PathData>,
-    data: Data<CauthConfig>
+    data: Data<CauthConfig> 
 ) -> impl Responder {
     // these will never error
     let mut db_conn = data.db_conn
         .begin()
         .await
         .unwrap();
-    
-    let id = path.into_inner();
 
+    let id = path.into_inner();
+    
     let permitted = LoginSession::has_permission(
         &mut db_conn,
         &query.session_token,
@@ -58,22 +58,14 @@ pub async fn controller(
     let event = match Event::retrieve(&mut db_conn, id).await {
         Ok(event) => event,
         Err(err) => match err {
-            _ => return ServerResponse::new(
+            EventRetrieveError::NotFound => return ServerResponse::new(
                 StatusCode::BAD_REQUEST, 
                 None
             )
         }
     };
 
-    match event.commit(&mut db_conn).await {
-        Ok(_) => (),
-        Err(err) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
-            Some(json!({
-                "details": err.to_string()
-            }))
-        )
-    };
+    let _ = event.delete(&mut db_conn).await;
 
     match db_conn.commit().await {
         Ok(_) => (),
@@ -87,4 +79,3 @@ pub async fn controller(
         None
     );
 }
-
