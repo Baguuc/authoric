@@ -9,6 +9,7 @@ pub use self::{
     },
     groups::{
         list::controller as ListGroupsController,
-        insert::controller as InsertGroupController
+        insert::controller as InsertGroupController,
+        delete::controller as DeleteGroupController
     }
 };
