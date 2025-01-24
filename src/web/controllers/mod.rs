@@ -1,5 +1,6 @@
 pub mod permissions;
 pub mod groups;
+pub mod users;
 
 pub use self::{
     permissions::{
@@ -13,5 +14,8 @@ pub use self::{
         delete::controller as DeleteGroupController,
         grant_permission::controller as GrantPermissionGroupController,
         revoke_permission::controller as RevokePermissionGroupController
+    },
+    users::{
+        insert::controller as InsertUserController
     }
 };
