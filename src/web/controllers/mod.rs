@@ -6,5 +6,8 @@ pub use self::{
         list::controller as ListPermissionsController,
         insert::controller as InsertPermissionController,
         delete::controller as DeletePermissionController
+    },
+    groups::{
+        list::controller as ListGroupsController
     }
 };
