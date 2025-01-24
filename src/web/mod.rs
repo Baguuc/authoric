@@ -17,7 +17,8 @@ use crate::{
         ListGroupsController,
         InsertGroupController,
         DeleteGroupController,
-        GrantPermissionGroupController
+        GrantPermissionGroupController,
+        RevokePermissionGroupController
     }
 };
 
@@ -35,7 +36,7 @@ pub async fn run_server(config: CauthConfig) -> std::io::Result<()> {
             .service(InsertGroupController)
             .service(DeleteGroupController)
             .service(GrantPermissionGroupController)
-            .service(routes::groups::revoke_permission)
+            .service(RevokePermissionGroupController)
             .service(routes::user::post_users)
             .service(routes::user::delete_users)
             .service(routes::user::get_user)

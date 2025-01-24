@@ -11,6 +11,7 @@ pub use self::{
         list::controller as ListGroupsController,
         insert::controller as InsertGroupController,
         delete::controller as DeleteGroupController,
-        grant_permission::controller as GrantPermissionGroupController
+        grant_permission::controller as GrantPermissionGroupController,
+        revoke_permission::controller as RevokePermissionGroupController
     }
 };
