@@ -22,6 +22,7 @@ pub use self::{
         get_permission::controller as GetPermissionUserController,
         login::controller as LoginUserController,
         logout::controller as LogoutUserController,
-        grant_group::controller as GrantGroupUserController
+        grant_group::controller as GrantGroupUserController,
+        revoke_group::controller as RevokeGroupUserController
     }
 };

@@ -25,7 +25,8 @@ use crate::{
         GetPermissionUserController,
         LoginUserController,
         LogoutUserController,
-        GrantGroupUserController
+        GrantGroupUserController,
+        RevokeGroupUserController
     }
 };
 
@@ -51,7 +52,7 @@ pub async fn run_server(config: CauthConfig) -> std::io::Result<()> {
             .service(LoginUserController)
             .service(LogoutUserController)
             .service(GrantGroupUserController)
-            .service(routes::user::revoke_group)
+            .service(RevokeGroupUserController)
             .service(routes::event::commit_event)
             .service(routes::event::cancel_event)
     })

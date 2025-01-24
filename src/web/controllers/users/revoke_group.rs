@@ -1,13 +1,36 @@
-use actix_web::{delete, get, http::StatusCode, post, web::{Data, Json, Path, Query}, Responder};
+use actix_web::{
+    delete,
+    Responder,
+    http::StatusCode, 
+    web::{
+        Query,
+        Data,
+        Path
+    }
+};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::json;
+use crate::{
+    config::CauthConfig,
+    models::{
+        user::User,
+        login_session::LoginSession
+    },
+    web::ServerResponse
+};
 
-use crate::{config::CauthConfig, models::{login_session::LoginSessionStatus, LoginSession, User}, web::ServerResponse};
+#[derive(Deserialize)]
+struct QueryData {
+    session_token: String
+}
+
+type PathData = (String, String);
 
 #[delete("/users/{name}/{permission_name}")]
-pub async fn revoke_group(
+pub async fn controller(
     data: Data<CauthConfig>,
-    path: Path<(String, String)>
+    query: Query<QueryData>,
+    path: Path<PathData>
 ) ->impl Responder {
   // these will never error
   let mut db_conn = data.db_conn
