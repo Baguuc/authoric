@@ -8,6 +8,7 @@ pub use self::{
         delete::controller as DeletePermissionController
     },
     groups::{
-        list::controller as ListGroupsController
+        list::controller as ListGroupsController,
+        insert::controller as InsertGroupController
     }
 };
