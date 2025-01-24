@@ -17,6 +17,7 @@ pub use self::{
     },
     users::{
         insert::controller as InsertUserController,
-        delete::controller as DeleteUserController
+        delete::controller as DeleteUserController,
+        get::controller as GetUserController
     }
 };
