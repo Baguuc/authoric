@@ -16,6 +16,7 @@ pub use self::{
         revoke_permission::controller as RevokePermissionGroupController
     },
     users::{
-        insert::controller as InsertUserController
+        insert::controller as InsertUserController,
+        delete::controller as DeleteUserController
     }
 };
