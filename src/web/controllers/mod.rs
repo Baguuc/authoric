@@ -20,6 +20,7 @@ pub use self::{
         delete::controller as DeleteUserController,
         get::controller as GetUserController,
         get_permission::controller as GetPermissionUserController,
-        login::controller as LoginUserController
+        login::controller as LoginUserController,
+        logout::controller as LogoutUserController
     }
 };

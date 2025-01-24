@@ -37,7 +37,7 @@ pub struct JsonData {
 }
 
 #[post("/user")]
-pub async fn controllers(
+pub async fn controller(
     query: Query<QueryData>,
     json: Json<JsonData>,
     data: Data<CauthConfig>
