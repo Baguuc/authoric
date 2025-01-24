@@ -10,6 +10,7 @@ pub use self::{
     groups::{
         list::controller as ListGroupsController,
         insert::controller as InsertGroupController,
-        delete::controller as DeleteGroupController
+        delete::controller as DeleteGroupController,
+        grant_permission::controller as GrantPermissionGroupController
     }
 };
