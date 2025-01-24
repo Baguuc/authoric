@@ -12,7 +12,8 @@ use crate::{
     config::CauthConfig,
     web::controllers::{
         ListPermissionsController,
-        InsertPermissionController
+        InsertPermissionController,
+        DeletePermissionController
     }
 };
 
@@ -25,7 +26,7 @@ pub async fn run_server(config: CauthConfig) -> std::io::Result<()> {
             .app_data(Data::new(binding.clone()))
             .service(ListPermissionsController)
             .service(InsertPermissionController)
-            .service(routes::permissions::delete_permission)
+            .service(DeletePermissionController)
             .service(routes::groups::get_groups)
             .service(routes::groups::post_group)
             .service(routes::groups::delete_group)
