@@ -19,6 +19,7 @@ pub use self::{
         insert::controller as InsertUserController,
         delete::controller as DeleteUserController,
         get::controller as GetUserController,
-        get_permission::controller as GetPermissionUserController
+        get_permission::controller as GetPermissionUserController,
+        login::controller as LoginUserController
     }
 };
