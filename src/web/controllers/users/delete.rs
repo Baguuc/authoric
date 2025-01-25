@@ -22,7 +22,7 @@ use crate::{
 #[derive(Deserialize)]
 pub struct QueryData {
     session_token: String,
-    auto_commit: bool
+    auto_commit: Option<bool>
 }
 
 type PathData = String;
@@ -55,7 +55,10 @@ pub async fn controller(
         );
     }
 
-    if query.auto_commit {
+    let auto_commit = query.auto_commit
+        .unwrap_or(true);
+
+    if auto_commit {
         let result = User::delete(
             &mut db_conn,
             login

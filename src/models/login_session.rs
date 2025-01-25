@@ -46,7 +46,7 @@ impl ToString for LoginSessionStatus {
   fn to_string(self: &Self) -> String {
     return match self {
       Self::Commited => "Commited",
-      Self::OnHold => "OnHolds"
+      Self::OnHold => "OnHold"
     }
     .to_string();
   }
@@ -275,13 +275,13 @@ impl LoginSession {
   /// 
   pub async fn update(
     conn: &mut PgConnection,
-    session_id: &i32,
+    session_token: &String,
     new_status: LoginSessionStatus
   ) -> Result<(), LoginSessionUpdateError> {
-    let sql = "UPDATE login_sessions SET status = $1 WHERE id = $2;";
+    let sql = "UPDATE login_sessions SET status = $1 WHERE token = $2;";
     let result = query(sql)
       .bind(new_status.to_string())
-      .bind(session_id)
+      .bind(session_token)
       .execute(&mut *conn)
       .await;
     

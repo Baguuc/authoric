@@ -87,6 +87,13 @@ pub async fn controller(
         )
         .await;
 
+        match db_conn.commit().await {
+            Ok(_) => (),
+            Err(err) => {
+                eprintln!("Error committing changes: {}", err);
+            }
+        };
+        
         match result {
             Ok(credentials) => return ServerResponse::new(
                 StatusCode::OK,

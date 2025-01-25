@@ -53,6 +53,8 @@ pub async fn controller(
         );
     }
 
+    let response = result.unwrap();
+
     match db_conn.commit().await {
         Ok(_) => (),
         Err(err) => {
@@ -62,7 +64,7 @@ pub async fn controller(
 
     return ServerResponse::new(
         StatusCode::OK,
-        None
+        response
     );
 }
 

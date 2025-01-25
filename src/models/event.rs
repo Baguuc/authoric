@@ -95,6 +95,7 @@ impl ToString for EventRetrieveError {
 
 pub type EventInsertError = ();
 
+#[derive(Debug)]
 pub enum EventCommitError {
     /// Returned when the event is not found
     NotFound,
@@ -194,7 +195,7 @@ impl Event {
     hasher.input_str(key_raw.as_str());
     let key = hasher.result_str();
 
-    let sql = "INSERT INTO events (_type, data, key) VALUES ($1, $2) RETURNING id;";
+    let sql = "INSERT INTO events (_type, data, key) VALUES ($1, $2, $3) RETURNING id;";
     let result = query_as(sql)
       .bind(&_type.to_string())
       .bind(&data)
@@ -234,27 +235,27 @@ impl Event {
   /// 
   /// Commits a event, posting the changes it should make to the database <br>
   /// 
-  pub async fn commit(conn: &mut PgConnection, id: i32, key: &String) -> Result<(), EventCommitError> {
+  pub async fn commit(conn: &mut PgConnection, id: i32, key: &String) -> Result<Option<serde_json::Value>, EventCommitError> {
     let event = Self::retrieve(conn, id).await;
     let event = match event {
         Ok(event) => event,
         Err(_) => return Err(EventCommitError::NotFound)
     };
 
-    let result = match &event._type {
-      EventType::UserRegister => &event
+    let result: Result<Option<serde_json::Value>, Box<dyn Error>> = match &event._type {
+      EventType::UserRegister => event
         .clone()
         .handle_register_user_event(conn).await,
-      EventType::UserLogin => &event
+      EventType::UserLogin => event
         .clone()
         .handle_login_user_event(conn).await,
-      EventType::UserDelete => &event
+      EventType::UserDelete => event
         .clone()
         .handle_delete_user_event(conn).await
     };
 
-    match result {
-      Ok(_) => (),
+    let response = match result {
+      Ok(response) => response,
       Err(err) => return Err(EventCommitError::CannotCommit)
     };
     
@@ -265,10 +266,10 @@ impl Event {
         Err(_) => return Err(EventCommitError::Unauthorized)
     };
 
-    return Ok(());
+    return Ok(response);
   }
 
-  async fn handle_register_user_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
+  async fn handle_register_user_event(self, conn: &mut PgConnection) -> Result<Option<serde_json::Value>, Box<dyn Error>> {
     let user = serde_json::from_value::<User>(self.data).unwrap();
 
     match User::insert(conn, &user.login, &user.password_hash, &user.details).await {
@@ -276,27 +277,28 @@ impl Event {
       Err(err) => return Err(err.to_string().into())
     };
 
-    return Ok(());
+    return Ok(None);
   }
 
-  async fn handle_login_user_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
-    let session_id = serde_json::from_value::<i32>(self.data).unwrap();
+  async fn handle_login_user_event(self, conn: &mut PgConnection) -> Result<Option<serde_json::Value>, Box<dyn Error>> {
+    let session_token = serde_json::from_value::<String>(self.data).unwrap();
 
     let _ = LoginSession::update(
       conn,
-      &session_id,
+      &session_token,
       LoginSessionStatus::Commited
-    );
+    )
+    .await;
 
-    return Ok(());
+    return Ok(Some(serde_json::to_value(&session_token).unwrap()));
   }
 
-  async fn handle_delete_user_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
+  async fn handle_delete_user_event(self, conn: &mut PgConnection) -> Result<Option<serde_json::Value>, Box<dyn Error>> {
     let user_login = serde_json::from_value::<String>(self.data).unwrap();
 
     let _ = User::delete(conn, user_login).await;
 
-    return Ok(());
+    return Ok(None);
   }
 }
 
