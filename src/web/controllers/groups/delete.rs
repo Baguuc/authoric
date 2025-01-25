@@ -22,7 +22,6 @@ use crate::{
 #[derive(Deserialize)]
 struct QueryData {
     session_token: String,
-    auto_commit: Option<bool>
 }
 
 type PathData = String;
@@ -39,10 +38,6 @@ pub async fn controller(
         .await
         .unwrap();
 
-    let auto_commit = query
-        .auto_commit
-        .unwrap_or(true);
-
     let permitted = LoginSession::has_permission(
         &mut db_conn,
         &query.session_token,
@@ -57,56 +52,27 @@ pub async fn controller(
         );
     }
 
-    if auto_commit {
-        let result = Group::delete(
-            &mut db_conn,
-            &name
-        )
-        .await;
+    let result = Group::delete(
+        &mut db_conn,
+        &name
+    )
+    .await;
 
-        match db_conn.commit().await {
-            Ok(_) => (),
-            Err(err) => {
-                eprintln!("Error committing changes: {}", err);
-            }
-        };
-
-        match result {
-            Ok(_) => return ServerResponse::new(
-                StatusCode::OK,
-                None
-            ),
-            Err(_) => return ServerResponse::new(
-                StatusCode::BAD_REQUEST,
-                None
-            )
+    match db_conn.commit().await {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("Error committing changes: {}", err);
         }
-    } else {
-        let result = Group::event().delete(
-            &mut db_conn,
-            &name,
-            &query.session_token
+    };
+
+    match result {
+        Ok(_) => return ServerResponse::new(
+            StatusCode::OK,
+            None
+        ),
+        Err(_) => return ServerResponse::new(
+            StatusCode::BAD_REQUEST,
+            None
         )
-        .await;
-
-        match db_conn.commit().await {
-            Ok(_) => (),
-            Err(err) => {
-                eprintln!("Error committing changes: {}", err);
-            }
-        };
-
-        match result {
-            Ok(event_id) => return ServerResponse::new(
-                StatusCode::OK,
-                Some(json!({
-                    "event_id": event_id
-                }))
-            ),
-            Err(_) =>  return ServerResponse::new(
-                StatusCode::BAD_REQUEST,
-                None
-            ),
-        };
     }
 }

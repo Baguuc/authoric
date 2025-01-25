@@ -17,10 +17,6 @@ pub struct EventRaw {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum EventType {
-  PermissionCreate,
-  PermissionDelete,
-  GroupCreate,
-  GroupDelete,
   UserRegister,
   UserLogin,
   UserDelete
@@ -29,10 +25,6 @@ pub enum EventType {
 impl From<String> for EventType {
   fn from(value: String) -> Self {
     return match value.as_str() {
-      "PermissionCreate" => Self::PermissionCreate,
-      "PermissionDelete" => Self::PermissionDelete,
-      "GroupCreate" => Self::GroupCreate,
-      "GroupDelete" => Self::GroupDelete,
       "UserRegister" => Self::UserRegister,
       "UserLogin" => Self::UserLogin,
       "UserDelete" => Self::UserDelete,
@@ -44,10 +36,6 @@ impl From<String> for EventType {
 impl ToString for EventType {
   fn to_string(self: &Self) -> String {
     return match self {
-      Self::PermissionCreate => "PermissionCreate",
-      Self::PermissionDelete => "PermissionDelete",
-      Self::GroupCreate => "GroupCreate",
-      Self::GroupDelete => "GroupDelete",
       Self::UserRegister => "UserRegister",
       Self::UserLogin => "UserLogin",
       Self::UserDelete => "UserDelete"
@@ -208,18 +196,6 @@ impl Event {
   /// 
   pub async fn commit(self: Self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
     let result = match &self._type {
-      EventType::PermissionCreate => &self
-        .clone()
-        .handle_create_permission_event(conn).await,
-      EventType::PermissionDelete => &self
-        .clone()
-        .handle_delete_permission_event(conn).await,
-      EventType::GroupCreate => &self
-        .clone()
-        .handle_create_group_event(conn).await,
-      EventType::GroupDelete => &self
-        .clone()
-        .handle_delete_group_event(conn).await,
       EventType::UserRegister => &self
         .clone()
         .handle_register_user_event(conn).await,
@@ -287,51 +263,6 @@ impl Event {
       &"root".to_string(), 
       &new_permission_name
     );
-  }
-
-
-  async fn handle_create_permission_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
-    let permission = serde_json::from_value::<Permission>(self.data).unwrap();
-    
-    match Permission::insert(conn, &permission.name, &permission.description).await {
-      Ok(_) => (),
-      Err(err) => return Err(err.to_string().into())
-    };
-
-    return Ok(());
-  }
-
-  async fn handle_delete_permission_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
-    let permission_name = serde_json::from_value::<String>(self.data).unwrap();
-    
-    match Permission::delete(conn, &permission_name).await {
-      Ok(_) => (),
-      Err(err) => return Err(err.to_string().into())
-    };
-
-    return Ok(());
-  }
-  
-  async fn handle_create_group_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
-    let group = serde_json::from_value::<Group>(self.data).unwrap();
-    
-    match Group::insert(conn, &group.name, &group.description, &group.permissions).await {
-      Ok(_) => (),
-      Err(err) => return Err(err.to_string().into()) 
-    };
-
-    return Ok(());
-  }
-
-  async fn handle_delete_group_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
-    let group_name = serde_json::from_value::<String>(self.data).unwrap();
-    
-    match Group::delete(conn, &group_name).await {
-      Ok(_) => (),
-      Err(err) => return Err(err.to_string().into()) 
-    };
-
-    return Ok(());
   }
 
   async fn handle_register_user_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {

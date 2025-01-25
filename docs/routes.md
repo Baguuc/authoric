@@ -29,7 +29,6 @@ JSON Content:
 
 Query parameters:
 + session_token - Required, token of login session retrieved from POST /user route
-+ auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
 ### DELETE /permissions/{name}
 Deletes a permission
@@ -42,7 +41,6 @@ Requirements:
 
 Query Parameters:
 + session_token - Required, token of login session retrieved from POST /user route
-+ auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
 ## Groups
 
@@ -72,8 +70,6 @@ JSON Content:
 
 Query parameters:
 + session_token - Required, token of login session retrieved from POST /user route
-+ auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
-
 
 ### DELETE /groups/{name}
 Deletes a group
@@ -86,7 +82,6 @@ Requirements:
 
 Query parameters:
 + session_token - Required, token of login session retrieved from POST /user route
-+ auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
 ### POST /groups/{name}/{permission_name}
 Grants group a permission
@@ -184,7 +179,6 @@ Requirements:
 
 Query parameters:
 + session_token - Required, token of login session retrieved from POST /user route
-+ auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
 ## Event
 
