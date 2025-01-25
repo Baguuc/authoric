@@ -87,25 +87,16 @@ pub async fn controller(
         )
         .await;
 
-        match db_conn.commit().await {
-            Ok(_) => (),
-            Err(err) => {
-                eprintln!("Error committing changes: {}", err);
-            }
-        };
-
         match result {
-            Ok(event_id) => return ServerResponse::new(
+            Ok(credentials) => return ServerResponse::new(
                 StatusCode::OK,
-                Some(json!({
-                    "event_id": event_id
-                }))
+                Some(json!(credentials))
             ),
             Err(_) => return ServerResponse::new(
-                StatusCode::BAD_REQUEST,
+                StatusCode::INTERNAL_SERVER_ERROR,
                 None
             )
-        }
+        };
     }
 }
 

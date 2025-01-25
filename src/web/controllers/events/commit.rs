@@ -22,7 +22,7 @@ use crate::{
 
 #[derive(Deserialize)]
 struct QueryData {
-  session_token: String
+  key: String
 }
 
 type PathData = i32;
@@ -37,43 +37,21 @@ pub async fn controller(
     let mut db_conn = data.db_conn
         .begin()
         .await
-        .unwrap();
-    
+        .unwrap();    
     let id = path.into_inner();
-
-    let permitted = LoginSession::has_permission(
+    
+    let result = Event::commit(
         &mut db_conn,
-        &query.session_token,
-        format!("events:use:{}", id).as_str()
-    )
-    .await;
+        id,
+        &query.key
+    ).await;
 
-    if !permitted {
+    if result.is_err() {
         return ServerResponse::new(
             StatusCode::UNAUTHORIZED,
             None
         );
     }
-
-    let event = match Event::retrieve(&mut db_conn, id).await {
-        Ok(event) => event,
-        Err(err) => match err {
-            _ => return ServerResponse::new(
-                StatusCode::BAD_REQUEST, 
-                None
-            )
-        }
-    };
-
-    match event.commit(&mut db_conn).await {
-        Ok(_) => (),
-        Err(err) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
-            Some(json!({
-                "details": err.to_string()
-            }))
-        )
-    };
 
     match db_conn.commit().await {
         Ok(_) => (),

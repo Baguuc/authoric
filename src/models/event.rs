@@ -1,11 +1,18 @@
-use std::error::Error;
-
+use std::{
+    time::{
+        self,
+        UNIX_EPOCH
+    },
+    error::Error
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{prelude::FromRow, query, query_as, PgConnection};
-
+use crypto::{
+  digest::Digest,
+  sha3::Sha3
+};
 use crate::util::string::json_value_to_pretty_string;
-
 use super::{group::Group, login_session::{LoginSession, LoginSessionStatus}, permission::Permission, user::User, Order};
 
 #[derive(FromRow, Serialize, Deserialize)]
@@ -42,6 +49,12 @@ impl ToString for EventType {
     }
     .to_string();
   }
+}
+
+#[derive(Serialize)]
+pub struct EventCredentials {
+    id: i32,
+    key: String
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -82,7 +95,20 @@ impl ToString for EventRetrieveError {
 
 pub type EventInsertError = ();
 
-pub type EventDeleteError = ();
+pub enum EventCommitError {
+    /// Returned when the event is not found
+    NotFound,
+    /// Returned when the key - id pair is wrong
+    Unauthorized,
+    /// Returned when the data inside the event is wrong
+    CannotCommit
+}
+
+pub enum EventDeleteError {
+    /// Returned when the key - id pair is invalid
+    /// or the event do not exist
+    CannotInteract
+}
 
 impl Event {
   /// ## Event::list
@@ -124,7 +150,7 @@ impl Event {
     return Ok(events);
   }
 
-  /// ## Event::select
+  /// ## Event::retrieve
   /// 
   /// Retrieves a event with specified id from the database
   /// 
@@ -156,36 +182,50 @@ impl Event {
   /// 
   /// Inserts a event with provided data into the database and uses grant_event_permission function on it <br>
   /// 
-  pub async fn insert(conn: &mut PgConnection, _type: EventType, data: Value, creator_token: &String) -> Result<i32, EventInsertError> {
-    let sql = "INSERT INTO events (_type, data) VALUES ($1, $2) RETURNING id;";
+  pub async fn insert(conn: &mut PgConnection, _type: EventType, data: Value) -> Result<EventCredentials, EventInsertError> {
+    let _type = _type.to_string();
+    let time_since_epoch = time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let key_raw = format!("{}{}", _type, time_since_epoch);
+    
+    let mut hasher = Sha3::keccak256();
+    hasher.input_str(key_raw.as_str());
+    let key = hasher.result_str();
+
+    let sql = "INSERT INTO events (_type, data, key) VALUES ($1, $2) RETURNING id;";
     let result = query_as(sql)
-      .bind(_type.to_string())
-      .bind(data)
+      .bind(&_type.to_string())
+      .bind(&data)
+      .bind(&key)
       .fetch_one(&mut *conn)
       .await;
     let returned_row: (i32,) = result.unwrap();
     let event_id = returned_row.0;
-
-    Self::grant_event_permission(
-      conn,
-      event_id,
-      creator_token
-    )
-    .await;
     
-    return Ok(event_id);
+    return Ok(EventCredentials {
+        id: event_id,
+        key
+    });
   }
 
   /// ## Event::delete
   /// 
   /// Cancels the event, deleting it from the database <br>
   /// 
-  pub async fn delete(self, conn: &mut PgConnection) -> Result<(), EventDeleteError> {
-    let sql = "DELETE FROM events WHERE id = $1";
-    let _ = query(sql)
-      .bind(&self.id)
+  pub async fn delete(conn: &mut PgConnection, id: i32, key: &String) -> Result<(), EventDeleteError> {
+    let sql = "DELETE FROM events WHERE id = $1 AND key = $2";
+    let result = query(sql)
+      .bind(&id)
+      .bind(&key)
       .execute(&mut *conn)
-      .await;
+      .await
+      .unwrap();
+
+    if result.rows_affected() == 0 {
+        return Err(EventDeleteError::CannotInteract);
+    }
 
     return Ok(());
   }
@@ -194,75 +234,38 @@ impl Event {
   /// 
   /// Commits a event, posting the changes it should make to the database <br>
   /// 
-  pub async fn commit(self: Self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {
-    let result = match &self._type {
-      EventType::UserRegister => &self
+  pub async fn commit(conn: &mut PgConnection, id: i32, key: &String) -> Result<(), EventCommitError> {
+    let event = Self::retrieve(conn, id).await;
+    let event = match event {
+        Ok(event) => event,
+        Err(_) => return Err(EventCommitError::NotFound)
+    };
+
+    let result = match &event._type {
+      EventType::UserRegister => &event
         .clone()
         .handle_register_user_event(conn).await,
-      EventType::UserLogin => &self
+      EventType::UserLogin => &event
         .clone()
         .handle_login_user_event(conn).await,
-      EventType::UserDelete => &self
+      EventType::UserDelete => &event
         .clone()
         .handle_delete_user_event(conn).await
     };
 
     match result {
       Ok(_) => (),
-      Err(err) => return Err(err.to_string().into())
+      Err(err) => return Err(EventCommitError::CannotCommit)
     };
-    let _ = &self.delete(conn);
+    
+    match Event::delete(conn, id, key).await {
+        Ok(_) => (),
+        // at this point if we retrieved it before,
+        // we know only Unauthorized can occur
+        Err(_) => return Err(EventCommitError::Unauthorized)
+    };
 
     return Ok(());
-  }
-
-  /// ## grant_event_permission
-  /// 
-  /// Grant the created event permission to creator and root
-  /// 
-  /// Panics:
-  /// + this function assumes that the owner_token is validated and user with provided token exists
-  ///
-  pub async fn grant_event_permission(conn: &mut PgConnection, event_id: i32, owner_token: &String) {
-    let owner = LoginSession::retrieve(
-      conn, 
-      owner_token
-    )
-    .await
-    .unwrap();
-
-    let new_permission_name = format!("cauth:events:use:{}", event_id);
-    
-    let _ = Permission::insert(
-      conn,
-      &new_permission_name,
-      &format!("Allow the user to interact with event {}", event_id)
-    );
-    let new_group_name = format!("{}:events", owner.user_login);
-
-    let result = Group::insert(
-      conn,
-      &new_group_name,
-      &format!("Collection of permissions for {} user.", owner.user_login), 
-      &vec![new_permission_name.clone()]
-    ).await;
-
-    match result {
-      Ok(_) => (),
-      Err(_) => {
-        let _ = Group::grant_permission(
-          conn,
-          &new_group_name,
-          &new_permission_name
-        );
-      }
-    };
-
-    let _ = Group::grant_permission(
-      conn, 
-      &"root".to_string(), 
-      &new_permission_name
-    );
   }
 
   async fn handle_register_user_event(self, conn: &mut PgConnection) -> Result<(), Box<dyn Error>> {

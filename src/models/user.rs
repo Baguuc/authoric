@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{prelude::FromRow, query, query_as, PgConnection};
 use crate::util::string::json_value_to_pretty_string;
-use crate::models::{event::{Event, EventType}, login_session::{LoginSession, LoginSessionStatus, LoginSessionInsertError}, Order};
+use crate::models::{event::{Event, EventType, EventCredentials}, login_session::{LoginSession, LoginSessionStatus, LoginSessionInsertError}, Order};
 
 use super::{event::EventInsertError, login_session::{LoginSessionDeleteError, LoginSessionRetrieveError}};
 
@@ -415,29 +415,29 @@ impl UserEvent {
   pub async fn register(
     self: &Self,
     conn: &mut PgConnection,
-    login: String,
-    password: String,
-    details: serde_json::Value,
-    creator_token: &String
-  ) -> Result<(), UserInsertError> {
-    let password_hash = match hash_password(password) {
+    login: &String,
+    password: &String,
+    details: serde_json::Value
+  ) -> Result<EventCredentials, UserInsertError> {
+    let password_hash = match hash_password(password.clone()) {
       Ok(hash) => hash,
       Err(e) => return Err(UserInsertError::CannotHash(e.to_string()))
     };
     let data = User {
-      login,
+      login: login.clone(),
       password_hash,
       details
     };
     let data = serde_json::to_value(&data).unwrap();
-    let _ = Event::insert(
+    let result = Event::insert(
       conn,
       EventType::UserRegister,
-      data,
-      creator_token
-    ).await;
+      data
+    )
+    .await
+    .unwrap();
   
-    return Ok(());
+    return Ok(result);
   }
 
   /// ## UserEvent::login
@@ -452,7 +452,7 @@ impl UserEvent {
     conn: &mut PgConnection,
     login: &String,
     password: &String
-  ) -> Result<i32, UserLoginEventInsertError> {
+  ) -> Result<EventCredentials, UserLoginEventInsertError> {
     let result = User::login(
       conn,
       &login,
@@ -473,8 +473,7 @@ impl UserEvent {
     let result = Event::insert(
       conn,
       EventType::UserLogin,
-      data,
-      &session_token
+      data
     )
     .await;
 
@@ -493,15 +492,13 @@ impl UserEvent {
   pub async fn delete(
     self: &Self,
     conn: &mut PgConnection,
-    login: String,
-    creator_token: &String
-  ) -> Result<i32, EventInsertError> {
+    login: &String
+  ) -> Result<EventCredentials, EventInsertError> {
     let data = serde_json::to_value(&login).unwrap();
     return Event::insert(
       conn,
       EventType::UserDelete,
-      data,
-      creator_token
+      data
     ).await;
   }
 }

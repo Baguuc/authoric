@@ -185,20 +185,14 @@ Query parameters:
 ### POST /events/{id}
 Commits an event with specified ID.
 
-Requirements:
-+ User have to have the "events:use:{id}" permission (it's granted to him and the default admin group while creating the event)
-
 Query parameters:
-+ session_token - Required, token of login session retrieved from POST /user route
++ key - key returned while creating the event
 
 ### DELETE /events/{id}
 Cancels an event with specified ID.
 
-Requirements:
-+ User have to have the "events:use:{id}" permission (it's granted to him and the default admin group while creating the event)
-
 Query parameters:
-+ session_token - Required, token of login session retrieved from POST /user route
++ key - key returned while creating the event
 
 ### GET /user/permissions/{permission_name}
 Check if current user has specified permission

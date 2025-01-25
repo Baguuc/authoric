@@ -30,79 +30,71 @@ type PathData = String;
 #[delete("/users/{login}")]
 pub async fn controller(
     query: Query<QueryData>,
-    name: Path<PathData>,
+    path: Path<PathData>,
     data: Data<CauthConfig>
 ) -> impl Responder {
-  // these will never error
-  let mut db_conn = data.db_conn
-    .begin()
-    .await
-    .unwrap();
+    // these will never error
+    let mut db_conn = data.db_conn
+        .begin()
+        .await
+        .unwrap();
 
-  let permitted = LoginSession::has_permission(
-    &mut db_conn,
-    &query.session_token,
-    &format!("users:delete:{}", name)
-  )
-  .await;
-  
-  if !permitted {
-    return ServerResponse::new(
-      StatusCode::UNAUTHORIZED,
-      None
-    );
-  }
+    let login = path.into_inner();
 
-  if query.auto_commit {
-    let result = User::delete(
-      &mut db_conn,
-      name.into_inner()
-    )
-    .await;
-    
-    match db_conn.commit().await {
-        Ok(_) => (),
-        Err(err) => {
-            eprintln!("Error committing changes: {}", err);
-        }
-    };
-
-    match result {
-      Ok(_) => return ServerResponse::new(
-        StatusCode::OK,
-        None
-      ),
-      Err(_) => return ServerResponse::new(
-        StatusCode::BAD_REQUEST,
-        None
-      )
-    }
-  } else { 
-    let result = User::event().delete(
-      &mut db_conn,
-      name.into_inner(),
-      &query.session_token
+    let permitted = LoginSession::has_permission(
+        &mut db_conn,
+        &query.session_token,
+        &format!("users:delete:{}", login)
     )
     .await;
 
-    match db_conn.commit().await {
-        Ok(_) => (),
-        Err(err) => {
-            eprintln!("Error committing changes: {}", err);
-        }
-    };
-    
-    match result {
-      Ok(event_id) => return ServerResponse::new(
-        StatusCode::OK,
-        Some(json!({
-          "event_id": event_id
-        }))
-      ),
-      Err(_) => return ServerResponse::new(
-        StatusCode::BAD_REQUEST,
-        None
-      )
+    if !permitted {
+        return ServerResponse::new(
+            StatusCode::UNAUTHORIZED,
+            None
+        );
     }
-  }
+
+    if query.auto_commit {
+        let result = User::delete(
+            &mut db_conn,
+            login
+        )
+        .await;
+
+        match db_conn.commit().await {
+            Ok(_) => (),
+            Err(err) => {
+                eprintln!("Error committing changes: {}", err);
+            }
+        };
+
+        match result {
+            Ok(_) => return ServerResponse::new(
+                StatusCode::OK,
+                None
+            ),
+            Err(_) => return ServerResponse::new(
+                StatusCode::BAD_REQUEST,
+                None
+            )
+        }
+    } else { 
+        let result = User::event().delete(
+            &mut db_conn, 
+            &login
+        )
+        .await;
+
+        match result {
+            Ok(credentials) => return ServerResponse::new(
+                StatusCode::OK,
+                Some(json!(credentials))
+            ),
+            Err(_) => return ServerResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                None
+            )
+        };
+    }
 }
