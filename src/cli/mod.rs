@@ -113,6 +113,13 @@ pub async fn init_defaults(config: &CauthConfig) {
   )
   .await;
 
+  let _ = Permission::insert(
+    &mut tx,
+    &"cauth:users:delete".to_string(), 
+    &"permission to delete ANY user on the service, use with caution.".to_string()
+  )
+  .await;
+  
   let _ = Group::insert(
     &mut tx,
     &"root".to_string(), 
@@ -125,7 +132,8 @@ pub async fn init_defaults(config: &CauthConfig) {
       "cauth:groups:post".to_string(),
       "cauth:groups:delete".to_string(),
       "cauth:groups:update".to_string(),
-      "cauth:users:update".to_string()
+      "cauth:users:update".to_string(),
+      "cauth:users:delete".to_string()
     ]
   )
   .await;

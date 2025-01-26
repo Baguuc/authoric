@@ -41,12 +41,27 @@ pub async fn controller(
 
     let login = path.into_inner();
 
-    let permitted = LoginSession::has_permission(
+    let has_permission = LoginSession::has_permission(
         &mut db_conn,
         &query.session_token,
-        &format!("users:delete:{}", login)
+        &"cauth:users:delete".to_string()
     )
     .await;
+
+    let logged_user = LoginSession::retrieve(
+        &mut db_conn,
+        &query.session_token
+    ).await;
+
+    if !has_permission && logged_user.is_err() { 
+        return ServerResponse::new(
+            StatusCode::UNAUTHORIZED,
+            None
+        );
+    }
+    let has_same_username = logged_user.unwrap().user_login == login;
+
+    let permitted = has_permission || has_same_username;
 
     if !permitted {
         return ServerResponse::new(

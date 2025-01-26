@@ -121,7 +121,7 @@ Path parameters:
 + login - the login of the user to delete
 
 Requirements:
-+ user have to have "users:delete:{user}" permission
++ user have to have the same login as the ones it's trying to delete or "cauth:users:delete" permission.
 
 Query parameters
 + session_token - Required, token of login session retrieved from POST /user route
