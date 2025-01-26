@@ -272,7 +272,8 @@ impl Event {
   async fn handle_register_user_event(self, conn: &mut PgConnection) -> Result<Option<serde_json::Value>, Box<dyn Error>> {
     let user = serde_json::from_value::<User>(self.data).unwrap();
 
-    match User::insert(conn, &user.login, &user.password_hash, &user.details).await {
+    // the password stored in the events table is already hashed
+    match User::insert_unhashed(conn, &user.login, &user.password_hash, &user.details).await {
       Ok(()) => (),
       Err(err) => return Err(err.to_string().into())
     };

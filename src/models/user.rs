@@ -180,6 +180,26 @@ impl User {
     password: &String,
     details: &Value
   ) -> Result<(), UserInsertError> {
+    let password_hash = match hash_password(password.to_string()) {
+      Ok(hash) => hash,
+      Err(err) => return Err(UserInsertError::CannotHash(err.to_string()))
+    };
+
+    return Self::insert_unhashed(
+        conn,
+        login,
+        &password_hash,
+        details
+    )
+    .await;
+  }
+
+  pub async fn insert_unhashed(
+    conn: &mut PgConnection,
+    login: &String,
+    password: &String,
+    details: &Value
+  ) -> Result<(), UserInsertError> {
     let sql = "
       INSERT INTO
         users (login, password_hash, details)
@@ -188,14 +208,9 @@ impl User {
       ;
     ";
      
-    let password_hash = match hash_password(password.to_string()) {
-      Ok(hash) => hash,
-      Err(err) => return Err(UserInsertError::CannotHash(err.to_string()))
-    };
-
     let result = query(sql)
       .bind(&login)
-      .bind(password_hash)
+      .bind(&password)
       .bind(&details)
       .execute(&mut *conn)
       .await;
