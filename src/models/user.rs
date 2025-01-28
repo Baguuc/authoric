@@ -232,12 +232,6 @@ impl User {
     conn: &mut PgConnection,
     login: String
   ) -> Result<(), UserDeleteError> {
-    let sql = "DELETE FROM users WHERE login = $1";
-    let q = query(sql)
-      .bind(&login)
-      .execute(&mut *conn)
-      .await;
-
     let sql = "DELETE FROM users_groups WHERE user_login = $1";
     let q = query(sql)
       .bind(&login)
@@ -245,6 +239,12 @@ impl User {
       .await;
 
     let sql = "DELETE FROM login_sessions WHERE user_login = $1";
+    let q = query(sql)
+      .bind(&login)
+      .execute(&mut *conn)
+      .await;
+
+    let sql = "DELETE FROM users WHERE login = $1";
     let q = query(sql)
       .bind(&login)
       .execute(&mut *conn)
