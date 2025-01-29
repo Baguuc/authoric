@@ -9,6 +9,8 @@ mod web;
 
 #[tokio::main]
 async fn main() {
+  sqlx::migrate!();
+  
   let cli = CauthCli::parse();
   let _ = cli.run();
 }
