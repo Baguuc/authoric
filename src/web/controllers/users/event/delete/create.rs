@@ -1,9 +1,9 @@
 use actix_web::{
-    delete,
+    post,
     Responder,
     http::StatusCode, 
     web::{
-        Path,
+        Json,
         Data,
         Query
     }
@@ -21,16 +21,19 @@ use crate::{
 };
 
 #[derive(Deserialize)]
-pub struct QueryData {
+struct QueryData {
     session_token: String
 }
 
-type PathData = String;
+#[derive(Deserialize)]
+struct JsonData {
+    login: String
+}
 
-#[delete("/users/{login}")]
+#[post("/events/users/delete")]
 pub async fn controller(
     query: Query<QueryData>,
-    path: Path<PathData>,
+    json: Json<JsonData>,
     data: Data<CauthConfig>
 ) -> impl Responder {
     // these will never error
@@ -38,8 +41,6 @@ pub async fn controller(
         .begin()
         .await
         .unwrap();
-
-    let login = path.into_inner();
 
     let has_permission = LoginSession::has_permission(
         &mut db_conn,
@@ -59,7 +60,7 @@ pub async fn controller(
             None
         );
     }
-    let has_same_username = logged_user.unwrap().user_login == login;
+    let has_same_username = logged_user.unwrap().user_login == json.login;
 
     let permitted = has_permission || has_same_username;
 
@@ -72,7 +73,7 @@ pub async fn controller(
     
     let result = UserDeleteEvent::insert(
         &mut db_conn,
-        &login
+        &json.login
     )
     .await;
     

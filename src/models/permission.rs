@@ -4,9 +4,14 @@ use std::error::Error;
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, query, query_as, PgConnection};
-use crate::{models::{Order, event::{Event, EventType}}, util::string::json_value_to_pretty_string};
-
-use super::{event::EventInsertError, Group, LoginSession};
+use crate::{
+    models::{
+        Order,
+        Group,
+        LoginSession,
+    },
+    util::string::json_value_to_pretty_string
+};
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Permission {

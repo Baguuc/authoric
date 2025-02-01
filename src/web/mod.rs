@@ -26,8 +26,15 @@ use crate::{
         LogoutUserController,
         GrantGroupUserController,
         RevokeGroupUserController,
-        CommitEventController,
-        CancelEventController
+        UserRegisterEventCreateController,
+        UserRegisterEventCommitController,
+        UserRegisterEventCancelController,
+        UserLoginEventCreateController,
+        UserLoginEventCancelController,
+        UserLoginEventCommitController,
+        UserDeleteEventCreateController,
+        UserDeleteEventCommitController,
+        UserDeleteEventCancelController,
     }
 };
 
@@ -54,8 +61,15 @@ pub async fn run_server(config: CauthConfig) -> std::io::Result<()> {
             .service(LogoutUserController)
             .service(GrantGroupUserController)
             .service(RevokeGroupUserController)
-            .service(CommitEventController)
-            .service(CancelEventController)
+            .service(UserRegisterEventCreateController)
+            .service(UserRegisterEventCommitController)
+            .service(UserRegisterEventCancelController)
+            .service(UserLoginEventCreateController)
+            .service(UserLoginEventCancelController)
+            .service(UserLoginEventCommitController)
+            .service(UserDeleteEventCreateController)
+            .service(UserDeleteEventCommitController)
+            .service(UserDeleteEventCancelController)
     })
     .bind(("127.0.0.1", config.port))?
     .run()

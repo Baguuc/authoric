@@ -4,20 +4,16 @@ use actix_web::{
     http::StatusCode, 
     web::{
         Json,
-        Data,
-        Query
+        Data
     }
 };
 use serde::Deserialize;
-use serde_json::{
-    json,
-    Value
-};
+use serde_json::json;
 use crate::{
     config::CauthConfig,
     models::{
         user::User,
-        event::UserRegisterEvent,
+        event::UserDeleteEvent,
         login_session::LoginSession
     },
     web::ServerResponse
@@ -25,42 +21,43 @@ use crate::{
 
 #[derive(Deserialize)]
 struct JsonData {
-    login: String,
-    password: String,
-    details: Option<Value>
+    id: i32,
+    key: String
 }
 
-#[post("/users")]
+#[post("/events/users/delete/commit")]
 pub async fn controller(
     json: Json<JsonData>,
     data: Data<CauthConfig>
 ) -> impl Responder {
     // these will never error
     let mut db_conn = data.db_conn
-        .acquire()
+        .begin()
         .await
         .unwrap();
-    
-    let details = json.details
-        .clone()
-        .unwrap_or(json!({}));
-    
-    let result = User::insert(
-        &mut db_conn, 
-        &json.login, 
-        &json.password, 
-        &details
+
+    let result = UserDeleteEvent::commit(
+        &mut db_conn,
+        &json.id,
+        &json.key
     )
     .await;
-    
+
+    match db_conn.commit().await {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("Error while commiting changes to the database: {}", err);
+        }
+    };
+
     match result {
         Ok(_) => return ServerResponse::new(
             StatusCode::OK,
             None
         ),
         Err(_) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
+            StatusCode::UNAUTHORIZED,
             None
         )
-    };
+    }
 }

@@ -6,3 +6,4 @@ pub mod login;
 pub mod logout;
 pub mod grant_group;
 pub mod revoke_group;
+pub mod event;

@@ -6,7 +6,7 @@ use clap::{
 use colored::Colorize;
 use futures::executor::block_on;
 
-use crate::{config::CauthConfig, models::{event::Event, group::{Group, GroupGrantError, GroupRevokeError}, permission::Permission, user::{User, UserGrantError, UserRevokeError}}, util::io::input};
+use crate::{config::CauthConfig, models::{group::{Group, GroupGrantError, GroupRevokeError}, permission::Permission, user::{User, UserGrantError, UserRevokeError}}, util::io::input};
 
 
 #[derive(Debug, Args)]
@@ -110,8 +110,7 @@ pub struct AdminInspectCommand {
 pub enum AdminInspectEntityType {
   Permission(AdminInspectStringIDCommand),
   Group(AdminInspectStringIDCommand),
-  User(AdminInspectStringIDCommand),
-  Event(AdminInspectIntegerIDCommand)
+  User(AdminInspectStringIDCommand)
 }
 
 #[derive(Debug, Args)]
@@ -163,18 +162,6 @@ impl AdminInspectCommand {
 
         println!("{}", user.to_string());
       },
-      AdminInspectEntityType::Event(id) => {
-        let mut executor = block_on(config.db_conn.acquire()).unwrap();
-        let event = match block_on(Event::retrieve(&mut executor, id.id)) {
-          Ok(event) => event,
-          Err(_) => {
-            println!("{}", format!("Event \"{}\" not found.", id.id).red());
-            return;
-          }
-        };
-
-        println!("{}", event.to_string());
-      }
     };
   }
 }

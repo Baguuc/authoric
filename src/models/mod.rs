@@ -10,8 +10,7 @@ pub use crate::models::{
     permission::Permission,
     group::Group,
     user::User,
-    login_session::LoginSession,
-    event::Event
+    login_session::LoginSession
 };
 
 #[derive(Deserialize, Clone, Copy)]

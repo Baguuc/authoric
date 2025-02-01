@@ -17,6 +17,7 @@ use crate::{
     config::CauthConfig,
     models::{
         user::User,
+        event::UserLoginEvent,
         login_session::{
             LoginSession,
             LoginSessionStatus
@@ -26,11 +27,6 @@ use crate::{
 };
 
 #[derive(Deserialize)]
-pub struct QueryData {
-    auto_commit: Option<bool>
-}
-
-#[derive(Deserialize)]
 pub struct JsonData {
     login: String,
     password: String,
@@ -38,7 +34,6 @@ pub struct JsonData {
 
 #[post("/user")]
 pub async fn controller(
-    query: Query<QueryData>,
     json: Json<JsonData>,
     data: Data<CauthConfig>
 ) -> impl Responder {
@@ -48,62 +43,32 @@ pub async fn controller(
         .await
         .unwrap();
 
-    let auto_commit = query.auto_commit
-        .unwrap_or(true);
+    let result = User::login(
+        &mut db_conn,
+        &json.login,
+        &json.password,
+        LoginSessionStatus::Commited
+    )
+    .await;
 
-    if auto_commit {
-        let result = User::login(
-            &mut db_conn,
-            &json.login,
-            &json.password,
-            LoginSessionStatus::Commited
+    match db_conn.commit().await {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("Error committing changes: {}", err);
+        }
+    };
+
+    match result {
+        Ok(token) => return ServerResponse::new(
+            StatusCode::OK,
+            Some(json!({
+            "token": token
+            }))
+        ),
+        Err(_) => return ServerResponse::new(
+            StatusCode::BAD_REQUEST,
+            None
         )
-        .await;
-
-        match db_conn.commit().await {
-            Ok(_) => (),
-            Err(err) => {
-                eprintln!("Error committing changes: {}", err);
-            }
-        };
-
-        match result {
-            Ok(token) => return ServerResponse::new(
-                StatusCode::OK,
-                Some(json!({
-                "token": token
-                }))
-            ),
-            Err(_) => return ServerResponse::new(
-                StatusCode::BAD_REQUEST,
-                None
-            )
-        };
-    } else {
-        let result = User::event().login(
-            &mut db_conn, 
-            &json.login,
-            &json.password
-        )
-        .await;
-
-        match db_conn.commit().await {
-            Ok(_) => (),
-            Err(err) => {
-                eprintln!("Error committing changes: {}", err);
-            }
-        };
-        
-        match result {
-            Ok(credentials) => return ServerResponse::new(
-                StatusCode::OK,
-                Some(json!(credentials))
-            ),
-            Err(_) => return ServerResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                None
-            )
-        };
-    }
+    };
 }
 

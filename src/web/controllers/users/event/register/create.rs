@@ -30,7 +30,7 @@ struct JsonData {
     details: Option<Value>
 }
 
-#[post("/users")]
+#[post("/events/users/register")]
 pub async fn controller(
     json: Json<JsonData>,
     data: Data<CauthConfig>
@@ -45,21 +45,21 @@ pub async fn controller(
         .clone()
         .unwrap_or(json!({}));
     
-    let result = User::insert(
-        &mut db_conn, 
-        &json.login, 
-        &json.password, 
+    let result = UserRegisterEvent::insert(
+        &mut db_conn,
+        &json.login,
+        &json.password,
         &details
     )
     .await;
-    
+
     match result {
-        Ok(_) => return ServerResponse::new(
+        Ok(credentials) => return ServerResponse::new(
             StatusCode::OK,
-            None
+            Some(json!(credentials))
         ),
         Err(_) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
+            StatusCode::INTERNAL_SERVER_ERROR,
             None
         )
     };

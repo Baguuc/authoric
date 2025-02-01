@@ -4,15 +4,11 @@ use actix_web::{
     http::StatusCode, 
     web::{
         Json,
-        Data,
-        Query
+        Data
     }
 };
 use serde::Deserialize;
-use serde_json::{
-    json,
-    Value
-};
+use serde_json::json;
 use crate::{
     config::CauthConfig,
     models::{
@@ -25,12 +21,11 @@ use crate::{
 
 #[derive(Deserialize)]
 struct JsonData {
-    login: String,
-    password: String,
-    details: Option<Value>
+    id: i32,
+    key: String
 }
 
-#[post("/users")]
+#[post("/events/users/register/cancel")]
 pub async fn controller(
     json: Json<JsonData>,
     data: Data<CauthConfig>
@@ -40,27 +35,22 @@ pub async fn controller(
         .acquire()
         .await
         .unwrap();
-    
-    let details = json.details
-        .clone()
-        .unwrap_or(json!({}));
-    
-    let result = User::insert(
-        &mut db_conn, 
-        &json.login, 
-        &json.password, 
-        &details
+
+    let result = UserRegisterEvent::cancel(
+        &mut db_conn,
+        &json.id,
+        &json.key
     )
     .await;
-    
+
     match result {
         Ok(_) => return ServerResponse::new(
             StatusCode::OK,
             None
         ),
         Err(_) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
+            StatusCode::UNAUTHORIZED,
             None
         )
-    };
+    }
 }

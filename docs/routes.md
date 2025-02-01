@@ -1,6 +1,9 @@
 # Routes
 Here all the routes of the API are listed.
 
+
+
+
 ## Permissions
 
 ### GET /permissions
@@ -41,6 +44,10 @@ Requirements:
 
 Query Parameters:
 + session_token - Required, token of login session retrieved from POST /user route
+
+
+---
+
 
 ## Groups
 
@@ -101,6 +108,10 @@ Fails when a mentioned group do not exist or group do not have mentioned permiss
 Requirements:
 + User have to have the "groups:update" permission
 
+
+---
+
+
 ## User
 
 ### POST /users
@@ -155,6 +166,12 @@ Logs out from the user's account, deleting the session
 Query parameters:
 + session_token - Required, token of login session retrieved from POST /user route
 
+### GET /user/permissions/{permission_name}
+Check if current user has specified permission
+
+Query parameters:
++ session_token - Required, token of login session retrieved from POST /user route
+
 ### POST /users/{name}/{group_name}
 Grants user a group
 
@@ -166,7 +183,6 @@ Requirements:
 
 Query parameters:
 + session_token - Required, token of login session retrieved from POST /user route
-+ auto_commit - Optional, determines if the event should be created or should the operation be commited (default: true)
 
 ### DELETE /users/{name}/{group_name}
 Revokes a group from user
@@ -180,22 +196,71 @@ Requirements:
 Query parameters:
 + session_token - Required, token of login session retrieved from POST /user route
 
+
+---
+
+
 ## Event
 
-### POST /events/{id}
-Commits an event with specified ID.
+### POST /events/users/register
+Insert a UserRegister event into database.
 
-Query parameters:
-+ key - key returned while creating the event
+Json parameters:
++ login - Required, login of the user to create
++ password - Required, password of the user to create
++ details - Required, details of the user to create
 
-### DELETE /events/{id}
-Cancels an event with specified ID.
+### POST /events/users/register/commit
+Commit a UserRegister event
 
-Query parameters:
-+ key - key returned while creating the event
+Json parameters:
++ id - Required, id of the event to commit
++ key - Required, key of the event to commit
 
-### GET /user/permissions/{permission_name}
-Check if current user has specified permission
+### POST /events/users/register/cancel
+Cancel a UserRegister event
 
-Query parameters:
-+ session_token - Required, token of login session retrieved from POST /user route
+Json parameters:
++ id - Required, id of the event to commit
++ key - Required, key of the event to commit
+
+### POST /events/users/login
+Insert a UserLogin event into database.
+
+Json parameters:
++ login - Required, login of the user to login
++ password - Required, password of the user to login
+
+### POST /events/users/login/commit
+Commit a UserLogin event
+
+Json parameters:
++ id - Required, id of the event to commit
++ key - Required, key of the event to commit
+
+### POST /events/users/login/cancel
+Cancel a UserLogin event
+
+Json parameters:
++ id - Required, id of the event to commit
++ key - Required, key of the event to commit
+
+### POST /events/users/delete
+Insert a UserDelete event into database.
+
+Json parameters:
++ login - Required, login of the user to login
+
+### POST /events/users/delete/commit
+Commit a Userdelete event
+
+Json parameters:
++ id - Required, id of the event to commit
++ key - Required, key of the event to commit
+
+### POST /events/users/delete/cancel
+Cancel a Userdelete event
+
+Json parameters:
++ id - Required, id of the event to commit
++ key - Required, key of the event to commit

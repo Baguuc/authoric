@@ -4,9 +4,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{prelude::FromRow, query, query_as, PgConnection};
 use crate::util::string::json_value_to_pretty_string;
-use crate::models::{event::{Event, EventType, EventCredentials}, login_session::{LoginSession, LoginSessionStatus, LoginSessionInsertError}, Order};
-
-use super::{event::EventInsertError, login_session::{LoginSessionDeleteError, LoginSessionRetrieveError}};
+use crate::models::{
+    login_session::{
+        LoginSession,
+        LoginSessionStatus,
+        LoginSessionInsertError,
+        LoginSessionDeleteError,
+        LoginSessionRetrieveError
+    },
+    Order
+};
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct User {
@@ -78,6 +85,7 @@ impl ToString for UserHasPermissionError {
   }
 }
 
+#[derive(Debug)]
 pub enum UserLoginError {
   /// Returned when the user is not found
   NotFound,
@@ -113,6 +121,13 @@ impl ToString for UserRevokeError {
       Self::NameError => "Provided user or group do not exist".to_string()
     };
   }
+}
+
+pub enum UserVerifyPasswordError {
+  /// Returned when the user is not found
+  NotFound,
+  /// Returned when the credentials are invalid
+  Unauthorized
 }
 
 impl User {
@@ -267,16 +282,20 @@ impl User {
     password: &String,
     session_status: LoginSessionStatus
   ) -> Result<String, UserLoginError> {
-    let user = match Self::retrieve(conn, &login).await {
-      Ok(user) => user,
-      Err(_) => return Err(UserLoginError::NotFound)
-    };
+    let result = Self::verify_password(
+        conn,
+        login,
+        password
+    )
+    .await;
 
-    let password_hash = &PasswordHash::parse(user.password_hash.as_str(), password_hash::Encoding::B64).unwrap();
-    match Argon2::default().verify_password(password.as_bytes(), password_hash) {
-      Ok(_) => (),
-      Err(_) => return Err(UserLoginError::InvalidCredentials)
-    };
+    match result {
+        Ok(_) => (),
+        Err(err) => match err {
+            UserVerifyPasswordError::NotFound => return Err(UserLoginError::NotFound),
+            UserVerifyPasswordError::Unauthorized => return Err(UserLoginError::InvalidCredentials)
+        }
+    }
 
     let result = LoginSession::insert(
       conn,
@@ -395,131 +414,34 @@ impl User {
     return Ok(());
   }
 
-
-  /// ## User::event
+  /// ## User::verify_password
   ///
-  /// Get an UserEvent instance for user event creation
-  ///
-  pub fn event() -> UserEvent {
-    return UserEvent;
-  }
-}
-
-
-pub struct UserEvent;
-
-pub enum UserLoginEventInsertError {
-  /// Returned when the user is not found
-  NotFound,
-  /// Returned when the credentials are invalid
-  InvalidCredentials,
-  /// Returned when the token hash cannot be created
-  CannotHash(String),
-  /// Returned when the event insertion throws an error
-  EventInsertError(EventInsertError)
-}
-
-impl UserEvent {
-  /// ## UserEvent::register
-  ///
-  /// Insert a UserRegister event into database
+  /// Retrieves a user and checks a password against it's hash
   ///
   /// Errors:
-  /// + The password cannot be hashed
+  /// + when user do not exist
+  /// + when the password is invalid
   ///
-  pub async fn register(
-    self: &Self,
-    conn: &mut PgConnection,
-    login: &String,
-    password: &String,
-    details: serde_json::Value
-  ) -> Result<EventCredentials, UserInsertError> {
-    let password_hash = match hash_password(password.clone()) {
-      Ok(hash) => hash,
-      Err(e) => return Err(UserInsertError::CannotHash(e.to_string()))
-    };
-    let data = User {
-      login: login.clone(),
-      password_hash,
-      details
-    };
-    let data = serde_json::to_value(&data).unwrap();
-    let result = Event::insert(
-      conn,
-      EventType::UserRegister,
-      data
-    )
-    .await
-    .unwrap();
-  
-    return Ok(result);
-  }
-
-  /// ## UserEvent::login
-  ///
-  /// Insert a UserLogin event into database
-  ///
-  /// Errors:
-  /// + When the credentials are incorrect and the login session cannot be created
-  ///
-  pub async fn login(
-    self: &Self,
-    conn: &mut PgConnection,
-    login: &String,
-    password: &String
-  ) -> Result<EventCredentials, UserLoginEventInsertError> {
-    let result = User::login(
-      conn,
-      &login,
-      &password,
-      LoginSessionStatus::OnHold
-    ).await;
-
-    let session_token = match result {
-      Ok(session_token) => session_token,
-      Err(err) => match err {
-        UserLoginError::CannotHash(err) => return Err(UserLoginEventInsertError::CannotHash(err)),
-        UserLoginError::InvalidCredentials => return Err(UserLoginEventInsertError::InvalidCredentials),
-        UserLoginError::NotFound => return Err(UserLoginEventInsertError::NotFound)
-      }
+  pub async fn verify_password(
+      db_conn: &mut PgConnection,
+      login: &String,
+      password: &String
+  ) -> Result<(), UserVerifyPasswordError> {
+    let user = match Self::retrieve(db_conn, &login).await {
+      Ok(user) => user,
+      Err(_) => return Err(UserVerifyPasswordError::NotFound)
     };
 
-    let data = serde_json::to_value(&session_token).unwrap();
-    let result = Event::insert(
-      conn,
-      EventType::UserLogin,
-      data
-    )
-    .await;
-
-    match result {
-      Ok(event_id) => return Ok(event_id),
-      Err(err) => return Err(UserLoginEventInsertError::EventInsertError(err))
-    }
-  }
-   
-
-
-  /// ## UserEvent::delete
-  ///
-  /// Insert a UserDelete event into database
-  ///
-  pub async fn delete(
-    self: &Self,
-    conn: &mut PgConnection,
-    login: &String
-  ) -> Result<EventCredentials, EventInsertError> {
-    let data = serde_json::to_value(&login).unwrap();
-    return Event::insert(
-      conn,
-      EventType::UserDelete,
-      data
-    ).await;
+    let password_hash = &PasswordHash::parse(user.password_hash.as_str(), password_hash::Encoding::B64).unwrap();
+    
+    return match Argon2::default().verify_password(password.as_bytes(), password_hash) {
+      Ok(_) => Ok(()),
+      Err(_) => return Err(UserVerifyPasswordError::Unauthorized)
+    };
   }
 }
 
-
-fn hash_password(password: String) -> Result<String, String> {
+pub fn hash_password(password: String) -> Result<String, String> {
   let pwd = password.as_bytes();
   let salt = SaltString::generate(&mut OsRng);
 

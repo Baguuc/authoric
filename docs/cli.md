@@ -25,7 +25,7 @@
   cauth admin create permission
   cauth admin create group
 ```
-+ ### inspect - see the data of a permission, group, user or event
++ ### inspect - see the data of a permission, group or user
 ```bash
   cauth admin inspect <permission|group|user|event> <permission_name|group_name|user_login|event_id>
   

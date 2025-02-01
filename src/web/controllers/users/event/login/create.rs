@@ -17,50 +17,55 @@ use crate::{
     config::CauthConfig,
     models::{
         user::User,
-        event::UserRegisterEvent,
-        login_session::LoginSession
+        event::UserLoginEvent,
+        login_session::{
+            LoginSession,
+            LoginSessionStatus
+        }
     },
     web::ServerResponse
 };
 
 #[derive(Deserialize)]
-struct JsonData {
+pub struct JsonData {
     login: String,
     password: String,
-    details: Option<Value>
 }
 
-#[post("/users")]
+#[post("/events/users/login")]
 pub async fn controller(
     json: Json<JsonData>,
     data: Data<CauthConfig>
 ) -> impl Responder {
     // these will never error
     let mut db_conn = data.db_conn
-        .acquire()
+        .begin()
         .await
         .unwrap();
     
-    let details = json.details
-        .clone()
-        .unwrap_or(json!({}));
-    
-    let result = User::insert(
+    let result = UserLoginEvent::insert(
         &mut db_conn, 
-        &json.login, 
-        &json.password, 
-        &details
+        &json.login,
+        &json.password
     )
     .await;
+
+    match db_conn.commit().await {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("Error committing changes: {}", err);
+        }
+    };
     
     match result {
-        Ok(_) => return ServerResponse::new(
+        Ok(credentials) => return ServerResponse::new(
             StatusCode::OK,
-            None
+            Some(json!(credentials))
         ),
         Err(_) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
+            StatusCode::INTERNAL_SERVER_ERROR,
             None
         )
     };
 }
+

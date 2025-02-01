@@ -1,7 +1,6 @@
 pub mod permissions;
 pub mod groups;
 pub mod users;
-pub mod events;
 
 pub use self::{
     permissions::{
@@ -24,10 +23,23 @@ pub use self::{
         login::controller as LoginUserController,
         logout::controller as LogoutUserController,
         grant_group::controller as GrantGroupUserController,
-        revoke_group::controller as RevokeGroupUserController
-    },
-    events::{
-        commit::controller as CommitEventController,
-        cancel::controller as CancelEventController
+        revoke_group::controller as RevokeGroupUserController,
+        event::{
+            register::{
+                create::controller as UserRegisterEventCreateController,
+                commit::controller as UserRegisterEventCommitController,
+                cancel::controller as UserRegisterEventCancelController
+            },
+            login::{
+                create::controller as UserLoginEventCreateController,
+                commit::controller as UserLoginEventCommitController,
+                cancel::controller as UserLoginEventCancelController
+            },
+            delete::{
+                create::controller as UserDeleteEventCreateController,
+                commit::controller as UserDeleteEventCommitController,
+                cancel::controller as UserDeleteEventCancelController
+            }
+        }
     }
 };
