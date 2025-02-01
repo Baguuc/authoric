@@ -13,7 +13,10 @@ use serde_json::json;
 use crate::{
     config::CauthConfig,
     models::{
-        group::Group,
+        group::{
+            Group,
+            GroupGrantError
+        },
         login_session::LoginSession
     },
     web::ServerResponse
@@ -25,6 +28,31 @@ struct QueryData {
 }
 
 type PathData = (String, String);
+
+fn ok() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        None
+    );
+}
+
+fn not_found_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "A group with this name do not exist"
+        }))
+    );
+}
+
+fn permission_not_found_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "A group with this name do not exist"
+        }))
+    );
+}
 
 #[post("/groups/{name}/{permission_name}")]
 pub async fn controller(
@@ -61,16 +89,6 @@ pub async fn controller(
     )
     .await;
 
-    match result {
-        Ok(_) => (),
-        Err(_) => {
-            return ServerResponse::new(
-                StatusCode::BAD_REQUEST,
-                None
-            )
-        }
-    };
-
     match db_conn.commit().await {
         Ok(_) => (),
         Err(err) => {
@@ -78,8 +96,11 @@ pub async fn controller(
         }
     };
 
-    return ServerResponse::new(
-        StatusCode::OK,
-        None
-    );
+    match result {
+        Ok(_) => return ok(),
+        Err(error) => match error {
+            GroupGrantError::NotFound => return not_found_error(),
+            GroupGrantError::PermissionNotFound => return permission_not_found_error()
+        }
+    };
 }

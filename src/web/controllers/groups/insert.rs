@@ -8,12 +8,15 @@ use actix_web::{
         Query
     }
 };
-use serde::Deserialize;
 use serde_json::json;
+use serde::Deserialize;
 use crate::{
     config::CauthConfig,
     models::{
-        group::Group,
+        group::{
+            Group,
+            GroupInsertError
+        },
         login_session::LoginSession
     },
     web::ServerResponse
@@ -29,6 +32,32 @@ struct JsonData {
     name: String,
     description: String,
     permissions: Vec<String>
+}
+
+fn ok() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        None
+    );
+}
+
+fn name_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "A group with this name already exist."
+        }))
+    );
+}
+
+fn permission_not_found_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "One of the listed permissions do not exist."
+        }))
+    );
+
 }
 
 #[post("/groups")]
@@ -73,13 +102,10 @@ pub async fn controller(
     };
 
     match result {
-        Ok(_) => return ServerResponse::new(
-            StatusCode::OK,
-            None
-        ),
-        Err(_) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
-            None
-        )
+        Ok(_) => return ok(), 
+        Err(error) => match error {
+            GroupInsertError::NameError => return name_error(),
+            GroupInsertError::PermissionNotFound => return permission_not_found_error()
+        }
     }
 }

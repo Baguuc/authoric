@@ -30,12 +30,6 @@ impl ToString for Group {
 #[derive(Debug)]
 pub enum GroupListError {}
 
-impl ToString for GroupListError {
-  fn to_string(&self) -> String {
-    return "".to_string();
-  }
-}
-
 pub enum GroupRetrieveError {
   /// Returned when a group with specified name is not found
   NotFound,
@@ -50,63 +44,70 @@ impl ToString for GroupRetrieveError {
 }
 
 pub enum GroupInsertError {
-  /// Returned when the group either has too long name or description,
-  /// a group with provided name already exist
-  /// or one of the provided permissions do not exist
+  /// Returned when the group with specified name already exist
   NameError,
-  /// Returned when transaction fails for some reason,
-  /// also contains the original error string
-  ServerError(String)
+  /// Returned when one of the permissions listed do not exist in the database
+  PermissionNotFound
 }
 
 impl ToString for GroupInsertError {
   fn to_string(&self) -> String {
     return match self {
-      Self::NameError => "Either the provided name or description is too long, this group already exist or one of the provided permissions do not exist.".to_string(),
-      Self::ServerError(original_err) => format!("Server error: {}", original_err)
-    };
+        Self::NameError => "A group with provided name do not exist.",
+        Self::PermissionNotFound => "One of the listed permissions to not exists"
+    }
+    .to_string();
   }
 }
 
 pub enum GroupDeleteError {
-  /// Returned when transaction fails for some reason,
-  /// also contains the original error string
-  ServerError(String)
+    /// Returned when the group with specified name do not exist
+    NotFound
 }
 
 impl ToString for GroupDeleteError {
   fn to_string(&self) -> String {
     return match self {
-      Self::ServerError(original_err) => format!("Server error: {}", original_err)
-    };
+        Self::NotFound => "A group with this name do not exist."
+    }
+    .to_string();
   }
 }
 
 pub enum GroupGrantError {
-  /// Returned either when a group with provided name do not exist
-  /// or provided permission do not exist
-  NameError
+  /// Returned when a group with provided name do not exist
+  NotFound,
+  /// Returned when permission with provided name do not exist
+  PermissionNotFound
 }
 
 impl ToString for GroupGrantError {
   fn to_string(&self) -> String {
     return match self {
-      Self::NameError => "Provided group or permission do not exist".to_string()
-    };
+      Self::NotFound => "A group with provided name do not exist",
+      Self::PermissionNotFound => "A permission with provided name do not exist"
+    }
+    .to_string();
   }
 }
 
 pub enum GroupRevokeError {
-  /// Returned either when a group with provided name do not exist
-  /// or provided permission do not exist
-  NameError
+  /// Returned when a group with provided name do not exist
+  NotFound,
+  /// Returned when permission with provided name do not exist
+  PermissionNotFound,
+  /// Returned when the provided permission wasn't granted
+  PermissionNotGranted
 }
 
 impl ToString for GroupRevokeError {
   fn to_string(&self) -> String {
     return match self {
-      Self::NameError => "Provided group or permission do not exist".to_string()
-    };
+      Self::NotFound => "A group with provided name do not exist",
+      Self::PermissionNotFound => "A permission with provided name do not exist",
+      Self::PermissionNotGranted => "The group with provided name never had this permission"
+    }
+    .to_string();
   }
 }
 
@@ -210,7 +211,7 @@ impl Group {
     for permission_name in permissions {
       match Self::grant_permission(&mut *conn, &name, permission_name).await {
         Ok(_) => (),
-        Err(_) => return Err(GroupInsertError::NameError)
+        Err(_) => return Err(GroupInsertError::PermissionNotFound)
       }
     }
 
@@ -227,18 +228,22 @@ impl Group {
     name: &String
   ) -> Result<(), GroupDeleteError> {
     let sql = "DELETE FROM groups_permissions WHERE group_name = $1;";
-    let q = query(&sql).bind(&name);
-
-    let _ = q.execute(&mut *conn).await;
+    let _ = query(&sql)
+        .bind(&name)
+        .execute(&mut *conn)
+        .await;
 
     let sql = "DELETE FROM groups WHERE name = $1;".to_string();
-    let q = query(&sql).bind(&name);
+    let result = query(&sql)
+        .bind(&name)
+        .execute(&mut *conn)
+        .await
+        .unwrap();
 
-    match q.execute(&mut *conn).await {
-      Ok(_) => (),
-      Err(err) => return Err(GroupDeleteError::ServerError(err.to_string()))
-    };
-
+    if result.rows_affected() == 0 {
+        return Err(GroupDeleteError::NotFound);
+    }
+    
     return Ok(());
   }
 
@@ -261,24 +266,28 @@ impl Group {
   /// Grants group a permission with specified name
   /// 
   /// Errors:
-  /// + When provided group or permission do not exist
+  /// + When provided group do not exist
+  /// + When the provided permission do not exist
   /// 
   pub async fn grant_permission(
     conn: &mut PgConnection,
     name: &String,
     permission_name: &String
   ) -> Result<(), GroupGrantError> {
+    if let Err(_) = Permission::retrieve(conn, permission_name).await {
+        return Err(GroupGrantError::PermissionNotFound);
+    }
+
+    if let Err(_) = Group::retrieve(conn, name).await {
+        return Err(GroupGrantError::NotFound);
+    }
+
     let sql = "INSERT INTO groups_permissions (group_name, permission_name) VALUES ($1, $2);";
     let result = query(sql)
       .bind(name)
       .bind(permission_name)
       .execute(&mut *conn)
       .await;
-
-    match result {
-      Ok(_) => (),
-      Err(_) => return Err(GroupGrantError::NameError)
-    };
 
     return Ok(());
   }
@@ -295,6 +304,14 @@ impl Group {
     name: &String,
     permission_name: &String
   ) -> Result<(), GroupRevokeError> {
+    if let Err(_) = Permission::retrieve(conn, permission_name).await {
+        return Err(GroupRevokeError::PermissionNotFound);
+    }
+
+    if let Err(_) = Group::retrieve(conn, name).await {
+        return Err(GroupRevokeError::NotFound);
+    }
+
     let sql = "DELETE FROM groups_permissions WHERE group_name = $1 AND permission_name = $2;";
     let result = query(sql)
       .bind(name)
@@ -304,7 +321,7 @@ impl Group {
       .unwrap();
 
     if result.rows_affected() == 0 {
-      return Err(GroupRevokeError::NameError);
+        return Err(GroupRevokeError::PermissionNotGranted)
     }
 
     return Ok(());

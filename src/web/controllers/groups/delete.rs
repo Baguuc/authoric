@@ -13,7 +13,10 @@ use serde_json::json;
 use crate::{
     config::CauthConfig,
     models::{
-        group::Group,
+        group::{
+            Group,
+            GroupDeleteError
+        },
         login_session::LoginSession
     },
     web::ServerResponse
@@ -25,6 +28,22 @@ struct QueryData {
 }
 
 type PathData = String;
+
+fn ok() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        None
+    );
+}
+
+fn not_found_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "A group with this name do not exist."
+        }))
+    )
+}
 
 #[delete("/groups/{name}")]
 pub async fn controller(
@@ -66,13 +85,9 @@ pub async fn controller(
     };
 
     match result {
-        Ok(_) => return ServerResponse::new(
-            StatusCode::OK,
-            None
-        ),
-        Err(_) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
-            None
-        )
+        Ok(_) => return ok(),
+        Err(error) => match error {
+            GroupDeleteError::NotFound => return not_found_error()
+        }
     }
 }
