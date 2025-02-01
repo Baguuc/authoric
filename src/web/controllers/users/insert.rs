@@ -5,7 +5,6 @@ use actix_web::{
     web::{
         Json,
         Data,
-        Query
     }
 };
 use serde::Deserialize;
@@ -16,9 +15,10 @@ use serde_json::{
 use crate::{
     config::CauthConfig,
     models::{
-        user::User,
-        event::UserRegisterEvent,
-        login_session::LoginSession
+        user::{
+            User,
+            UserInsertError
+        },
     },
     web::ServerResponse
 };
@@ -28,6 +28,31 @@ struct JsonData {
     login: String,
     password: String,
     details: Option<Value>
+}
+
+fn ok() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        None
+    );
+}
+
+fn name_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "A user with this login already exists"
+        }))
+    );
+}
+
+fn cannot_hash_error(details: String) -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Some(json!({
+            "details": format!("Cannot hash the user's password: {}", details)
+        }))
+    );
 }
 
 #[post("/users")]
@@ -54,13 +79,10 @@ pub async fn controller(
     .await;
     
     match result {
-        Ok(_) => return ServerResponse::new(
-            StatusCode::OK,
-            None
-        ),
-        Err(_) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
-            None
-        )
+        Ok(_) => return ok(),
+        Err(error) => match error {
+            UserInsertError::NameError => return name_error(),
+            UserInsertError::CannotHash(details) => return cannot_hash_error(details)
+        }
     };
 }

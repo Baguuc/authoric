@@ -1,9 +1,10 @@
 
+use actix_web::http::StatusCode;
 use argon2::{password_hash::{self, rand_core::OsRng, SaltString}, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{prelude::FromRow, query, query_as, PgConnection};
-use crate::util::string::json_value_to_pretty_string;
+use crate::{util::string::json_value_to_pretty_string, web::ServerResponse};
 use crate::models::{
     login_session::{
         LoginSession,
@@ -14,6 +15,8 @@ use crate::models::{
     },
     Order
 };
+
+use super::Group;
 
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct User {
@@ -71,7 +74,11 @@ impl ToString for UserInsertError {
   }
 }
 
-pub type UserDeleteError = ();
+pub enum UserDeleteError {
+    /// Returned when the user with specified login do not exist
+    NotFound
+}
+
 pub enum UserHasPermissionError {
   /// Returned when the user do not have queried permissions
   Unauthorized
@@ -96,29 +103,36 @@ pub enum UserLoginError {
 }
 
 pub enum UserGrantError {
-  /// Returned either when a user with provided login do not exist
-  /// or provided group do not exist
-  NameError
+    /// Returned when the user with specified login do not exist
+    NotFound,
+    /// Returned when the group with specified name do not exist
+    GroupNotFound
 }
 
 impl ToString for UserGrantError {
   fn to_string(&self) -> String {
     return match self {
-      Self::NameError => "Provided user or group do not exist".to_string()
+      Self::NotFound => "Provided user do not exist".to_string(),
+      Self::GroupNotFound => "Provided group do not exist".to_string()
     };
   }
 }
 
 pub enum UserRevokeError {
-  /// Returned either when a user with provided login do not exist
-  /// or provided group do not exist
-  NameError
+    /// Returned when the user with specified login do not exist
+    NotFound,
+    /// Returned when the group with specified name do not exist
+    GroupNotFound,
+    /// Returned when the group didn't had specified permission granted
+    NotGranted
 }
 
 impl ToString for UserRevokeError {
   fn to_string(&self) -> String {
     return match self {
-      Self::NameError => "Provided user or group do not exist".to_string()
+      Self::NotFound => "Provided user do not exist".to_string(),
+      Self::GroupNotFound => "Provided group do not exist".to_string(),
+      Self::NotGranted => "Provided group do not had this permission".to_string()
     };
   }
 }
@@ -248,22 +262,27 @@ impl User {
     login: String
   ) -> Result<(), UserDeleteError> {
     let sql = "DELETE FROM users_groups WHERE user_login = $1";
-    let q = query(sql)
+    let _ = query(sql)
       .bind(&login)
       .execute(&mut *conn)
       .await;
 
     let sql = "DELETE FROM login_sessions WHERE user_login = $1";
-    let q = query(sql)
+    let _ = query(sql)
       .bind(&login)
       .execute(&mut *conn)
       .await;
 
     let sql = "DELETE FROM users WHERE login = $1";
-    let q = query(sql)
+    let result = query(sql)
       .bind(&login)
       .execute(&mut *conn)
-      .await;
+      .await
+      .unwrap();
+ 
+    if result.rows_affected() == 0 {
+        return Err(UserDeleteError::NotFound);
+    }
 
     return Ok(());
   }
@@ -372,17 +391,20 @@ impl User {
     login: &String,
     group_name: &String
   ) -> Result<(), UserGrantError> {
+    if let Err(_) = Group::retrieve(conn, group_name).await {
+        return Err(UserGrantError::GroupNotFound);
+    }
+
+    if let Err(_) = User::retrieve(conn, login).await {
+        return Err(UserGrantError::NotFound);
+    }
+
     let sql = "INSERT INTO users_groups (user_login, group_name) VALUES ($1, $2);";
     let result = query(sql)
       .bind(login)
       .bind(group_name)
       .execute(&mut *conn)
       .await;
-
-    match result {
-      Ok(_) => (),
-      Err(_) => return Err(UserGrantError::NameError)
-    };
 
     return Ok(());
   }
@@ -399,6 +421,14 @@ impl User {
     login: &String,
     group_name: &String
   ) -> Result<(), UserRevokeError> {
+    if let Err(_) = Group::retrieve(conn, group_name).await {
+        return Err(UserRevokeError::GroupNotFound);
+    }
+
+    if let Err(_) = User::retrieve(conn, login).await {
+        return Err(UserRevokeError::NotFound);
+    }
+
     let sql = "DELETE FROM users_groups WHERE user_login = $1 AND group_name = $2;";
     let result = query(sql)
       .bind(login)
@@ -408,7 +438,7 @@ impl User {
       .unwrap();
 
     if result.rows_affected() == 0 {
-      return Err(UserRevokeError::NameError);
+      return Err(UserRevokeError::NotGranted);
     }
 
     return Ok(());

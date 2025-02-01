@@ -113,6 +113,7 @@ impl ToString for LoginSessionInsertError {
   }
 }
 
+#[derive(Debug)]
 pub enum LoginSessionDeleteError {
   /// Returned when the session wasn't deleted because it never existed
   NotFound
@@ -126,7 +127,11 @@ impl ToString for LoginSessionDeleteError {
   }
 }
 
-type LoginSessionUpdateError = ();
+#[derive(Debug)]
+pub enum LoginSessionGetUserError {
+    /// Returned when the session do not exist
+    NotFound
+}
 
 impl LoginSession {
   /// ## LoginSession::retrieve
@@ -300,7 +305,7 @@ impl LoginSession {
   pub async fn get_user(
     conn: &mut PgConnection,
     token: &String
-  ) -> Result<User, UserRetrieveError> {
+  ) -> Result<User, LoginSessionGetUserError> {
     let sql = "
     SELECT
       u.login,
@@ -324,7 +329,7 @@ impl LoginSession {
 
     let user = match result {
       Ok(result) => result,
-      Err(_) => return Err(UserRetrieveError::NotFound)
+      Err(_) => return Err(LoginSessionGetUserError::NotFound)
     };
 
     return Ok(user);

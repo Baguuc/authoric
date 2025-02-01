@@ -5,23 +5,18 @@ use actix_web::{
     web::{
         Json,
         Data,
-        Query
     }
 };
 use serde::Deserialize;
-use serde_json::{
-    json,
-    Value
-};
+use serde_json::json;
 use crate::{
     config::CauthConfig,
     models::{
-        user::User,
-        event::UserLoginEvent,
-        login_session::{
-            LoginSession,
-            LoginSessionStatus
-        }
+        user::{
+            User,
+            UserLoginError
+        },
+        login_session::LoginSessionStatus
     },
     web::ServerResponse
 };
@@ -30,6 +25,42 @@ use crate::{
 pub struct JsonData {
     login: String,
     password: String,
+}
+
+fn ok(token: String) -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        Some(json!({
+            "token": token
+        }))
+    );
+}
+
+fn not_found_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "The user with specified login do not exist"
+        }))
+    );
+}
+
+fn invalid_credentials_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "Provided credentials are invalid"
+        }))
+    );
+}
+
+fn cannot_hash_error(details: String) -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Some(json!({
+            "details": format!("Cannot create the token hash: {}", details)
+        }))
+    )
 }
 
 #[post("/user")]
@@ -59,16 +90,11 @@ pub async fn controller(
     };
 
     match result {
-        Ok(token) => return ServerResponse::new(
-            StatusCode::OK,
-            Some(json!({
-            "token": token
-            }))
-        ),
-        Err(_) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
-            None
-        )
+        Ok(token) => return ok(token),
+        Err(error) => match error {
+            UserLoginError::InvalidCredentials => return invalid_credentials_error(),
+            UserLoginError::NotFound => return not_found_error(),
+            UserLoginError::CannotHash(details) => return cannot_hash_error(details)
+        }
     };
 }
-

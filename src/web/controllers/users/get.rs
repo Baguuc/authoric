@@ -13,7 +13,10 @@ use crate::{
     config::CauthConfig,
     models::{
         user::User,
-        login_session::LoginSession
+        login_session::{
+            LoginSession,
+            LoginSessionGetUserError
+        }
     },
     web::ServerResponse
 };
@@ -21,6 +24,22 @@ use crate::{
 #[derive(Deserialize)]
 struct QueryData {
   session_token: String
+}
+
+fn ok(user: User) -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        Some(json!(user))
+    );
+}
+
+fn not_found_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "The session associated with this token was not found"
+        }))
+    );
 }
 
 #[get("/user")]
@@ -41,13 +60,9 @@ pub async fn controller(
     .await;
 
     match result {
-        Ok(user) => return ServerResponse::new(
-            StatusCode::OK,
-            Some(json!(user))
-        ),
-        Err(_) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
-            None
-        )
+        Ok(user) => return ok(user),
+        Err(error) => match error {
+            LoginSessionGetUserError::NotFound => return not_found_error() 
+        }
     };
 }

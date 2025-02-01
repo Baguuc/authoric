@@ -13,8 +13,7 @@ use serde_json::json;
 use crate::{
     config::CauthConfig,
     models::{
-        user::User,
-        login_session::LoginSession
+        login_session::LoginSession, user::{User, UserGrantError}
     },
     web::ServerResponse
 };
@@ -25,6 +24,31 @@ struct QueryData {
 }
 
 type PathData = (String, String);
+
+fn ok() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        None
+    );
+}
+
+fn not_found_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "User with specified login do not exist"
+        }))
+    );
+}
+
+fn group_not_found_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "Group with specified name do not exist"
+        }))
+    );
+}
 
 #[post("/users/{name}/{permission_name}")]
 pub async fn controller(
@@ -61,16 +85,6 @@ pub async fn controller(
     )
     .await;
 
-    match result {
-        Ok(_) => (),
-        Err(_) => {
-        return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
-            None
-        )
-    }
-    };
-
     match db_conn.commit().await {
         Ok(_) => (),
         Err(err) => {
@@ -78,8 +92,11 @@ pub async fn controller(
         }
     };
 
-    return ServerResponse::new(
-        StatusCode::OK,
-        None
-    );
+    match result {
+        Ok(_) => return ok(),
+        Err(error) => match error {
+            UserGrantError::NotFound => return not_found_error(),
+            UserGrantError::GroupNotFound => return group_not_found_error(),
+        }
+    }
 }

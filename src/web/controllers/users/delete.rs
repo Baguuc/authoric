@@ -13,7 +13,10 @@ use serde_json::json;
 use crate::{
     config::CauthConfig,
     models::{
-        user::User,
+        user::{
+            User,
+            UserDeleteError
+        },
         event::UserDeleteEvent,
         login_session::LoginSession
     },
@@ -26,6 +29,22 @@ pub struct QueryData {
 }
 
 type PathData = String;
+
+fn ok() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        None
+    );
+}
+
+fn not_found_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "The user with specified login do not exist"
+        }))
+    );
+}
 
 #[delete("/users/{login}")]
 pub async fn controller(
@@ -70,9 +89,9 @@ pub async fn controller(
         );
     }
     
-    let result = UserDeleteEvent::insert(
+    let result = User::delete(
         &mut db_conn,
-        &login
+        login
     )
     .await;
     
@@ -84,13 +103,9 @@ pub async fn controller(
     };
 
     match result {
-        Ok(credentials) => return ServerResponse::new(
-            StatusCode::OK,
-            Some(json!(credentials))
-        ),
-        Err(_) => return ServerResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            None
-        )
+        Ok(_) => return ok(),
+        Err(error) => match error {
+            UserDeleteError::NotFound => return not_found_error()
+        }
     };
 }
