@@ -13,7 +13,10 @@ use serde_json::json;
 use crate::{
     config::CauthConfig,
     models::{
-        permission::Permission,
+        permission::{
+            Permission,
+            PermissionInsertError
+        },
         login_session::LoginSession
     },
     web::ServerResponse
@@ -28,6 +31,22 @@ struct QueryData {
 struct JsonData {
     name: String,
     description: String
+}
+
+fn ok() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        None
+    );
+}
+
+fn name_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "A permission with that name already exists."
+        }))
+    );
 }
 
 #[post("/permissions")]
@@ -64,13 +83,9 @@ pub async fn controller(
     .await;
 
     match result {
-        Ok(_) => return ServerResponse::new(
-            StatusCode::OK,
-            None
-        ),
-        Err(_) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
-            None
-        )
+        Ok(_) => return ok(),
+        Err(error) => match error {
+            PermissionInsertError::NameError => return name_error()
+        }
     }
 }

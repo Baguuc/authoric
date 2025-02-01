@@ -36,6 +36,7 @@ impl ToString for PermissionListError {
   }
 }
 
+#[derive(Debug)]
 pub enum PermissionRetrieveError {
   /// Returned when a permission with specified name is not found
   NotFound,
@@ -49,6 +50,7 @@ impl ToString for PermissionRetrieveError {
   }
 }
 
+#[derive(Debug)]
 pub enum PermissionInsertError {
   /// Returned when the permission either has too long name or description
   /// or when a permission with provided name already exist
@@ -63,7 +65,11 @@ impl ToString for PermissionInsertError {
   }
 }
 
-pub enum PermissionDeleteError {}
+#[derive(Debug)]
+pub enum PermissionDeleteError {
+    /// Returned when the permission with specified name do not exist
+    NotFound
+}
 
 impl ToString for PermissionDeleteError {
   fn to_string(&self) -> String {
@@ -154,10 +160,15 @@ impl Permission {
     name: &String
   ) -> Result<(), PermissionDeleteError> {
     let sql = "DELETE FROM permissions WHERE name = $1;";
-    let q = query(&sql)
+    let result = query(&sql)
       .bind(&name)
       .execute(&mut *conn)
-      .await;
+      .await
+      .unwrap();
+
+    if result.rows_affected() == 0 {
+        return Err(PermissionDeleteError::NotFound)
+    }
     
     return Ok(());
   }

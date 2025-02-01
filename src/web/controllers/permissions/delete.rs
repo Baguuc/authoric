@@ -9,11 +9,13 @@ use actix_web::{
     }
 };
 use serde::Deserialize;
-use serde_json::json;
 use crate::{
     config::CauthConfig,
     models::{
-        permission::Permission,
+        permission::{
+            Permission,
+            PermissionDeleteError
+        },
         login_session::LoginSession
     },
     web::ServerResponse
@@ -25,6 +27,20 @@ struct QueryData {
 }
 
 type PathData = String;
+
+fn ok() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        None
+    );
+}
+
+fn not_found() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        None
+    );
+}
 
 #[delete("/permissions/{name}")]
 pub async fn controller(
@@ -59,13 +75,9 @@ pub async fn controller(
     .await;
 
     match result {
-        Ok(_) => return ServerResponse::new(
-            StatusCode::OK,
-            None
-        ),
-        Err(_) => return ServerResponse::new(
-            StatusCode::BAD_REQUEST,
-            None
-        )
+        Ok(_) => return ok(),
+        Err(error) => match error {
+            PermissionDeleteError::NotFound => not_found()
+        }
     }
 }
