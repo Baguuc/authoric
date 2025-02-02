@@ -41,6 +41,7 @@ fn name_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "NAME_ERROR",
             "details": "A user with this login already exists"
         }))
     );
@@ -50,6 +51,7 @@ fn cannot_hash_error(details: String) -> ServerResponse {
     return ServerResponse::new(
         StatusCode::INTERNAL_SERVER_ERROR,
         Some(json!({
+            "code": "CANNOT_HASH",
             "details": format!("Cannot hash the user's password: {}", details)
         }))
     );

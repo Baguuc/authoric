@@ -34,6 +34,7 @@ fn not_found_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "NOT_FOUND",
             "details": "Session associated with this token do not exist"
         }))
     );

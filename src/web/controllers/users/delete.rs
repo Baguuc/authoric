@@ -41,6 +41,7 @@ fn not_found_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "NOT_FOUND",
             "details": "The user with specified login do not exist"
         }))
     );

@@ -36,6 +36,7 @@ fn not_found_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "NOT_FOUND",
             "details": "User with specified login do not exist"
         }))
     );
@@ -45,6 +46,7 @@ fn group_not_found_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "GROUP_NOT_FOUND",
             "details": "Group with specified name do not exist"
         }))
     );
@@ -54,6 +56,7 @@ fn not_granted_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "NOT_GRANTED",
             "details": "Provided user never had this group"
         }))
     );

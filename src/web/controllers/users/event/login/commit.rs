@@ -34,6 +34,7 @@ fn not_found_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "NOT_FOUND",
             "details": "Event with this id do not exist"
         }))
     );
@@ -43,6 +44,7 @@ fn unauthorized_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::UNAUTHORIZED,
         Some(json!({
+            "code": "UNAUTHORIZED",
             "details": "You are not authorized to do that!"
         }))
     );

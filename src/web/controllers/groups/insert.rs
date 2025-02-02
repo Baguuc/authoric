@@ -45,6 +45,7 @@ fn name_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "NAME_ERROR",
             "details": "A group with this name already exist."
         }))
     );
@@ -54,6 +55,7 @@ fn permission_not_found_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "PERMISSION_NOT_FOUND",
             "details": "One of the listed permissions do not exist."
         }))
     );

@@ -39,6 +39,7 @@ fn not_found_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "NOT_FOUND",
             "details": "The user with specified login do not exist"
         }))
     );
@@ -48,6 +49,7 @@ fn invalid_credentials_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "INVALID_CREDENTIALS",
             "details": "Provided credentials are invalid"
         }))
     );
@@ -57,6 +59,7 @@ fn cannot_hash_error(details: String) -> ServerResponse {
     return ServerResponse::new(
         StatusCode::INTERNAL_SERVER_ERROR,
         Some(json!({
+            "code": "CANNOT_HASH",
             "details": format!("Cannot create the token hash: {}", details)
         }))
     )

@@ -9,6 +9,7 @@ use actix_web::{
     }
 };
 use serde::Deserialize;
+use serde_json::json;
 use crate::{
     config::CauthConfig,
     models::{
@@ -37,8 +38,11 @@ fn ok() -> ServerResponse {
 
 fn not_found() -> ServerResponse {
     return ServerResponse::new(
-        StatusCode::OK,
-        None
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "code": "NOT_FOUND",
+            "details": "This permission do not exist"
+        }))
     );
 }
 

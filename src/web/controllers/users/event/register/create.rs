@@ -39,6 +39,7 @@ fn already_exist_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "ALREADY_EXIST_ERROR",
             "details": "A user with this login do not exist"
         }))
     );
@@ -48,6 +49,7 @@ fn cannot_hash_error(details: String) -> ServerResponse {
     return ServerResponse::new(
         StatusCode::UNAUTHORIZED,
         Some(json!({
+            "code": "UNAUTHORIZED",
             "details": format!("Couldn't hash user password: {}", details)
         }))
     );

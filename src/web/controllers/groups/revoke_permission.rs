@@ -40,6 +40,7 @@ fn not_found_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "NOT_FOUND",
             "details": "A group with this name do not exist"
         }))
     );
@@ -49,7 +50,8 @@ fn permission_not_granted_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
-            "details": "A group with this name do not exist"
+            "code": "PERMISSION_NOT_GRANTED",
+            "details": "This group never had that permission"
         }))
     )
 }
@@ -58,6 +60,7 @@ fn permission_not_found_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "PERMISSION_NOT_FOUND",
             "details": "A group with this name do not exist"
         }))
     );

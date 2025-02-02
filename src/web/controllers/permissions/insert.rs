@@ -44,6 +44,7 @@ fn name_error() -> ServerResponse {
     return ServerResponse::new(
         StatusCode::BAD_REQUEST,
         Some(json!({
+            "code": "NAME_ERROR",
             "details": "A permission with that name already exists."
         }))
     );
