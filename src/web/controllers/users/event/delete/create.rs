@@ -13,9 +13,7 @@ use serde_json::json;
 use crate::{
     config::CauthConfig,
     models::{
-        user::User,
-        event::UserDeleteEvent,
-        login_session::LoginSession
+        event::{user_delete::UserDeleteEventInsertError, EventCredentials, UserDeleteEvent}, login_session::LoginSession, user::User
     },
     web::ServerResponse
 };
@@ -28,6 +26,22 @@ struct QueryData {
 #[derive(Deserialize)]
 struct JsonData {
     login: String
+}
+
+fn ok(credentials: EventCredentials) -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        Some(json!(credentials))
+    );
+}
+
+fn user_not_found_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "User with this login do not exist"
+        }))
+    );
 }
 
 #[post("/events/users/delete")]
@@ -85,13 +99,9 @@ pub async fn controller(
     };
 
     match result {
-        Ok(credentials) => return ServerResponse::new(
-            StatusCode::OK,
-            Some(json!(credentials))
-        ),
-        Err(_) => return ServerResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            None
-        )
+        Ok(credentials) => return ok(credentials),
+        Err(error) => match error {
+            UserDeleteEventInsertError::UserNotFound => return user_not_found_error()
+        }
     };
 }

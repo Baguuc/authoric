@@ -12,9 +12,7 @@ use serde_json::json;
 use crate::{
     config::CauthConfig,
     models::{
-        user::User,
-        event::UserRegisterEvent,
-        login_session::LoginSession
+        event::{user_register::UserRegisterEventCancelError, UserRegisterEvent}, login_session::LoginSession, user::User
     },
     web::ServerResponse
 };
@@ -23,6 +21,31 @@ use crate::{
 struct JsonData {
     id: i32,
     key: String
+}
+
+fn ok() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        None
+    );
+}
+
+fn not_found_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "Event with this id do not exist"
+        }))
+    );
+}
+
+fn unauthorized_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::UNAUTHORIZED,
+        Some(json!({
+            "details": "You are not authorized to do that!"
+        }))
+    );
 }
 
 #[post("/events/users/register/cancel")]
@@ -44,13 +67,10 @@ pub async fn controller(
     .await;
 
     match result {
-        Ok(_) => return ServerResponse::new(
-            StatusCode::OK,
-            None
-        ),
-        Err(_) => return ServerResponse::new(
-            StatusCode::UNAUTHORIZED,
-            None
-        )
+        Ok(_) => return ok(),
+        Err(error) => match error {
+            UserRegisterEventCancelError::NotFound => return not_found_error(),
+            UserRegisterEventCancelError::Unauthorized => return unauthorized_error()
+        }
     }
 }

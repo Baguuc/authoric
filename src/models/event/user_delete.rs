@@ -49,8 +49,6 @@ pub enum UserDeleteEventCommitError {
 pub enum UserDeleteEventInsertError {
     /// Returned when user with login specified in the event's data is not found
     UserNotFound,
-    /// Returned when the provided password is invalid
-    Unauthorized
 }
 
 pub enum UserDeleteEventCancelError {

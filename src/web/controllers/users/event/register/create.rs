@@ -16,9 +16,7 @@ use serde_json::{
 use crate::{
     config::CauthConfig,
     models::{
-        user::User,
-        event::UserRegisterEvent,
-        login_session::LoginSession
+        event::{user_register::UserRegisterEventInsertError, EventCredentials, UserRegisterEvent}, login_session::LoginSession, user::User
     },
     web::ServerResponse
 };
@@ -28,6 +26,31 @@ struct JsonData {
     login: String,
     password: String,
     details: Option<Value>
+}
+
+fn ok(credentials: EventCredentials) -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        Some(json!(credentials))
+    );
+}
+
+fn already_exist_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "A user with this login do not exist"
+        }))
+    );
+}
+
+fn cannot_hash_error(details: String) -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::UNAUTHORIZED,
+        Some(json!({
+            "details": format!("Couldn't hash user password: {}", details)
+        }))
+    );
 }
 
 #[post("/events/users/register")]
@@ -54,13 +77,10 @@ pub async fn controller(
     .await;
 
     match result {
-        Ok(credentials) => return ServerResponse::new(
-            StatusCode::OK,
-            Some(json!(credentials))
-        ),
-        Err(_) => return ServerResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            None
-        )
+        Ok(credentials) => return ok(credentials),
+        Err(error) => match error {
+            UserRegisterEventInsertError::AlreadyExists => return already_exist_error(),
+            UserRegisterEventInsertError::CannotHash(details) => return cannot_hash_error(details)
+        }
     };
 }

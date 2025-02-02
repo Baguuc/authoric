@@ -16,12 +16,10 @@ use serde_json::{
 use crate::{
     config::CauthConfig,
     models::{
-        user::User,
-        event::UserLoginEvent,
-        login_session::{
+        event::{user_login::UserLoginEventInsertError, EventCredentials, UserLoginEvent}, login_session::{
             LoginSession,
             LoginSessionStatus
-        }
+        }, user::User
     },
     web::ServerResponse
 };
@@ -30,6 +28,31 @@ use crate::{
 pub struct JsonData {
     login: String,
     password: String,
+}
+
+fn ok(credentials: EventCredentials) -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::OK,
+        Some(json!(credentials))
+    );
+}
+
+fn user_not_found_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::BAD_REQUEST,
+        Some(json!({
+            "details": "User with this login do not exist"
+        }))
+    );
+}
+
+fn unauthorized_error() -> ServerResponse {
+    return ServerResponse::new(
+        StatusCode::UNAUTHORIZED,
+        Some(json!({
+            "details": "Invalid password!"
+        }))
+    );
 }
 
 #[post("/events/users/login")]
@@ -58,14 +81,11 @@ pub async fn controller(
     };
     
     match result {
-        Ok(credentials) => return ServerResponse::new(
-            StatusCode::OK,
-            Some(json!(credentials))
-        ),
-        Err(_) => return ServerResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            None
-        )
+        Ok(credentials) => return ok(credentials),
+        Err(error) => match error {
+            UserLoginEventInsertError::Unauthorized => return unauthorized_error(),
+            UserLoginEventInsertError::UserNotFound => return user_not_found_error()
+        }
     };
 }
 
