@@ -25,7 +25,6 @@ use crate::{
         },
         login_session::{
             LoginSession,
-            LoginSessionStatus
         },
         event::EventCredentials
     }
@@ -184,8 +183,7 @@ impl UserLoginEvent {
 
         let token = LoginSession::insert(
             db_conn,
-            event.user_login,
-            LoginSessionStatus::Commited
+            event.user_login
         ).await
         .unwrap();
         

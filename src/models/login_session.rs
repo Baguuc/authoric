@@ -26,57 +26,16 @@ use crate::{
   util::string::json_value_to_pretty_string
 };
 
-#[derive(Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub enum LoginSessionStatus {
-  Commited,
-  OnHold
-}
-
-impl From<String> for LoginSessionStatus {
-  fn from(value: String) -> Self {
-    return match value.as_str() {
-       "Commited" => Self::Commited,
-       "OnHold" => Self::OnHold,
-      _ => todo!()
-    };
-  }
-}
-
-impl ToString for LoginSessionStatus {
-  fn to_string(self: &Self) -> String {
-    return match self {
-      Self::Commited => "Commited",
-      Self::OnHold => "OnHold"
-    }
-    .to_string();
-  }
-}
-
 #[derive(FromRow, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub struct LoginSessionRaw {
-  pub id: i32,
-  pub user_login: String,
-  pub status: String,
-  pub token: String
-}
-
-#[derive(Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct LoginSession {
   pub id: i32,
   pub user_login: String,
-  pub status: LoginSessionStatus,
   pub token: String
 }
 
 impl ToString for LoginSession {
   fn to_string(&self) -> String {
-    let raw = LoginSessionRaw {
-      id: self.id.clone(),
-      user_login: self.user_login.clone(),
-      status: self.status.to_string(),
-      token: self.token.clone()
-    };
-    let formatted = json_value_to_pretty_string(&serde_json::to_value(raw).unwrap());
+    let formatted = json_value_to_pretty_string(&serde_json::to_value(self).unwrap());
 
     return formatted;
   } 
@@ -149,15 +108,13 @@ impl LoginSession {
         login_sessions
       WHERE
         token = $1
-      AND
-        status = 'Commited';
       ;
     ";
 
     let q = query_as(&sql)
       .bind(&token);
 
-    let raw: LoginSessionRaw = match q.fetch_one(&mut *conn).await {
+    let raw: LoginSession = match q.fetch_one(&mut *conn).await {
       Ok(raw) => raw,
       Err(_) => return Err(LoginSessionRetrieveError::NotFound)
     };
@@ -165,7 +122,6 @@ impl LoginSession {
     let session = LoginSession {
       id: raw.id,
       user_login: raw.user_login,
-      status: LoginSessionStatus::from(raw.status),
       token: raw.token
     };
 
@@ -182,13 +138,12 @@ impl LoginSession {
   pub async fn insert(
     conn: &mut PgConnection,
     user_login: String,
-    status: LoginSessionStatus
   ) -> Result<String, LoginSessionInsertError> {
     let sql = "
       INSERT INTO
-        login_sessions (user_login, status, token)
+        login_sessions (user_login, token)
       VALUES
-        ($1, $2, $3)
+        ($1, $2)
       RETURNING token;
     ";
     
@@ -206,7 +161,6 @@ impl LoginSession {
 
     let result = query_as(sql)
       .bind(&user_login)
-      .bind(status.to_string())
       .bind(&token)
       .fetch_one(&mut *conn)
       .await;
@@ -271,25 +225,6 @@ impl LoginSession {
       return Err(LoginSessionDeleteError::NotFound)
     }
 
-    return Ok(());
-  }
-  
-  /// ## LoginSession::update
-  /// 
-  /// Updates a login session with new status
-  /// 
-  pub async fn update(
-    conn: &mut PgConnection,
-    session_token: &String,
-    new_status: LoginSessionStatus
-  ) -> Result<(), LoginSessionUpdateError> {
-    let sql = "UPDATE login_sessions SET status = $1 WHERE token = $2;";
-    let result = query(sql)
-      .bind(new_status.to_string())
-      .bind(session_token)
-      .execute(&mut *conn)
-      .await;
-    
     return Ok(());
   }
 

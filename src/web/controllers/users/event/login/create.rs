@@ -17,8 +17,7 @@ use crate::{
     config::CauthConfig,
     models::{
         event::{user_login::UserLoginEventInsertError, EventCredentials, UserLoginEvent}, login_session::{
-            LoginSession,
-            LoginSessionStatus
+            LoginSession
         }, user::User
     },
     web::ServerResponse

@@ -8,7 +8,6 @@ use crate::{util::string::json_value_to_pretty_string, web::ServerResponse};
 use crate::models::{
     login_session::{
         LoginSession,
-        LoginSessionStatus,
         LoginSessionInsertError,
         LoginSessionDeleteError,
         LoginSessionRetrieveError
@@ -299,7 +298,6 @@ impl User {
     conn: &mut PgConnection,
     login: &String,
     password: &String,
-    session_status: LoginSessionStatus
   ) -> Result<String, UserLoginError> {
     let result = Self::verify_password(
         conn,
@@ -319,7 +317,6 @@ impl User {
     let result = LoginSession::insert(
       conn,
       login.to_string(),
-      session_status
     )
     .await;
 

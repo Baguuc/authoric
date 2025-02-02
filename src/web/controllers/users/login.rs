@@ -16,7 +16,6 @@ use crate::{
             User,
             UserLoginError
         },
-        login_session::LoginSessionStatus
     },
     web::ServerResponse
 };
@@ -77,8 +76,7 @@ pub async fn controller(
     let result = User::login(
         &mut db_conn,
         &json.login,
-        &json.password,
-        LoginSessionStatus::Commited
+        &json.password
     )
     .await;
 
