@@ -39,8 +39,6 @@ use crate::{
 };
 
 pub async fn run_server(config: CauthConfig) -> std::io::Result<()> {
-    simple_logger::SimpleLogger::new().init().ok();
-
     let binding = config.clone();
     HttpServer::new(move || {
         App::new()

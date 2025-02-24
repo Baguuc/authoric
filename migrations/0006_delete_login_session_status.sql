@@ -1,1 +1,1 @@
-ALTER TABLE login_session_status DROP COLUMN status;
+ALTER TABLE login_sessions DROP COLUMN status;
