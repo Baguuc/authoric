@@ -18,19 +18,20 @@ pub fn log_database_interaction<E>(
 ) where
     E: ToString,
 {
-    log::debug!("---");
-    log::debug!(
-        "{}\nData:\n{}",
-        title,
-        json_value_to_pretty_string(&json!(data))
-    );
-    match status {
-        DatabaseOperationLogStatus::Ok => log::debug!("{}", "OK".bright_green()),
-        DatabaseOperationLogStatus::Err(details) => log::debug!(
+    let status_string = match status {
+        DatabaseOperationLogStatus::Ok => format!("{}", "OK".bright_green()),
+        DatabaseOperationLogStatus::Err(details) => format!(
             "{}.\nDetails:\n{}",
             "FAILED".bright_red(),
             details.to_string()
         ),
     };
-    log::debug!("---");
+
+    log::debug!(
+        "\n\n------===# {} #===------\n\nData:\n{}\n{}\n\n------===# {} #===------\n",
+        title,
+        json_value_to_pretty_string(&json!(data)),
+        status_string,
+        "*".repeat(title.len())
+    );
 }
