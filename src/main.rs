@@ -24,6 +24,10 @@ async fn main() {
                 message
             ))
         })
+        .level_for("actix_server", log::LevelFilter::Off)
+        .level_for("actix_http", log::LevelFilter::Off)
+        .level_for("sqlx", log::LevelFilter::Off)
+        .level_for("mio", log::LevelFilter::Off)
         .chain(std::io::stdout())
         .apply()
         .unwrap();
