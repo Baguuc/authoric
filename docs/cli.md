@@ -5,10 +5,6 @@
 ```bash
   authoric run
 ```
-+ ### daemon - run the API server in background
-```bash
-  authoric daemon
-```
 
 ## Config commands
 + ### edit - edit the config in the editor

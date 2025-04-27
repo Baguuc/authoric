@@ -2,7 +2,7 @@ pub mod subcommands;
 
 use crate::{
     cli::subcommands::{
-        admin::AdminCommand, config::ConfigCommand, daemon::DaemonCommand, run::RunCommand,
+        admin::AdminCommand, config::ConfigCommand, run::RunCommand,
     },
     config::CauthConfig,
     models::{Group, Permission},
@@ -22,7 +22,6 @@ impl CauthCli {
 
         let _ = match self.action {
             ActionType::Run(cmd) => cmd.run(config),
-            ActionType::Daemon(cmd) => cmd.run(config),
             ActionType::Admin(cmd) => cmd.run(config),
             ActionType::Config(cmd) => cmd.run(),
         };
@@ -32,7 +31,6 @@ impl CauthCli {
 #[derive(Debug, Subcommand)]
 pub enum ActionType {
     Run(RunCommand),
-    Daemon(DaemonCommand),
     Config(ConfigCommand),
     Admin(AdminCommand),
 }
