@@ -1,9 +1,6 @@
 # Routes
 Here all the routes of the API are listed.
 
-
-
-
 ## Permissions
 
 ### GET /permissions
@@ -132,7 +129,7 @@ Path parameters:
 + login - the login of the user to delete
 
 Requirements:
-+ user have to have the same login as the ones it's trying to delete or "cauth:users:delete" permission.
++ user have to have the same login as the ones it's trying to delete or "authoric:users:delete" permission.
 
 Query parameters
 + session_token - Required, token of login session retrieved from POST /user route

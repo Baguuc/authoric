@@ -82,7 +82,7 @@ pub async fn controller(
     let permitted = LoginSession::has_permission(
         &mut db_conn,
         &query.session_token,
-        "cauth:group:update"
+        "authoric:group:update"
     )
     .await;
 

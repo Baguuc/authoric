@@ -42,63 +42,63 @@ pub async fn init_defaults(config: &CauthConfig) {
 
     let _ = Permission::insert(
         &mut tx,
-        &"cauth:permissions:get".to_string(),
+        &"authoric:permissions:get".to_string(),
         &"permission to retrieve the permission list from the database".to_string(),
     )
     .await;
 
     let _ = Permission::insert(
         &mut tx,
-        &"cauth:permissions:post".to_string(),
+        &"authoric:permissions:post".to_string(),
         &"permission to post new permission to the database".to_string(),
     )
     .await;
 
     let _ = Permission::insert(
         &mut tx,
-        &"cauth:permissions:delete".to_string(),
+        &"authoric:permissions:delete".to_string(),
         &"permission to delete a permission from the database".to_string(),
     )
     .await;
 
     let _ = Permission::insert(
         &mut tx,
-        &"cauth:groups:get".to_string(),
+        &"authoric:groups:get".to_string(),
         &"permission to retrieve the groups list from the database".to_string(),
     )
     .await;
 
     let _ = Permission::insert(
         &mut tx,
-        &"cauth:groups:post".to_string(),
+        &"authoric:groups:post".to_string(),
         &"permission to post new group to the database".to_string(),
     )
     .await;
 
     let _ = Permission::insert(
         &mut tx,
-        &"cauth:groups:delete".to_string(),
+        &"authoric:groups:delete".to_string(),
         &"permission to post new group to the database".to_string(),
     )
     .await;
 
     let _ = Permission::insert(
         &mut tx,
-        &"cauth:groups:update".to_string(),
+        &"authoric:groups:update".to_string(),
         &"permission to grant/revoke permissions to groups".to_string(),
     )
     .await;
 
     let _ = Permission::insert(
         &mut tx,
-        &"cauth:users:update".to_string(),
+        &"authoric:users:update".to_string(),
         &"permission to grant/revoke groups to users".to_string(),
     )
     .await;
 
     let _ = Permission::insert(
         &mut tx,
-        &"cauth:users:delete".to_string(),
+        &"authoric:users:delete".to_string(),
         &"permission to delete ANY user on the service, use with caution.".to_string(),
     )
     .await;
@@ -108,15 +108,15 @@ pub async fn init_defaults(config: &CauthConfig) {
     &"root".to_string(), 
     &"the most privileged group, having to permissions to do everything. Caution: do not grant this group to any untrusted user as it can result in damages done to your system. Instead, create their own group fitting their needs.".to_string(),
     &vec![
-      "cauth:permissions:get".to_string(),
-      "cauth:permissions:post".to_string(),
-      "cauth:permissions:delete".to_string(),
-      "cauth:groups:get".to_string(),
-      "cauth:groups:post".to_string(),
-      "cauth:groups:delete".to_string(),
-      "cauth:groups:update".to_string(),
-      "cauth:users:update".to_string(),
-      "cauth:users:delete".to_string()
+      "authoric:permissions:get".to_string(),
+      "authoric:permissions:post".to_string(),
+      "authoric:permissions:delete".to_string(),
+      "authoric:groups:get".to_string(),
+      "authoric:groups:post".to_string(),
+      "authoric:groups:delete".to_string(),
+      "authoric:groups:update".to_string(),
+      "authoric:users:update".to_string(),
+      "authoric:users:delete".to_string()
     ]
   )
   .await;

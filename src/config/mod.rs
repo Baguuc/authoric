@@ -88,7 +88,7 @@ impl CauthConfig {
     }
 
     pub fn ask_to_edit() {
-        let result = input("You can find the config at $HOME/.cauth/config.yml.\nDo you want to edit the config with your default editor now? (Y/n)");
+        let result = input("You can find the config at $HOME/.authoric/config.yml.\nDo you want to edit the config with your default editor now? (Y/n)");
         let launch_editor = match result {
             Ok(result) => {
                 if result != "n" {
@@ -123,7 +123,7 @@ impl CauthConfig {
     }
 
     fn get_config_path() -> String {
-        return format!("{}/.cauth", home_dir().unwrap().to_str().unwrap());
+        return format!("{}/.authoric", home_dir().unwrap().to_str().unwrap());
     }
 
     fn get_config_full_path() -> String {

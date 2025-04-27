@@ -64,7 +64,7 @@ pub async fn controller(
     let has_permission = LoginSession::has_permission(
         &mut db_conn,
         &query.session_token,
-        &"cauth:users:delete".to_string()
+        &"authoric:users:delete".to_string()
     )
     .await;
 
